@@ -1,9 +1,9 @@
 {
-  "name": "zhiji-companion",
-  "version": "0.1.1",
-  "description": "知己 · 保存在你身边的长期记忆聊天伙伴",
+  "name": "whale-chan-companion",
+  "version": "0.1.2",
+  "description": "鲸鱼娘 · 保存在你身边的长期记忆聊天伙伴",
   "main": "src/main.cjs",
-  "author": "Zhiji",
+  "author": "yzd6552-commits",
   "private": true,
   "scripts": {
     "start": "electron .",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "local.zhiji.companion",
-    "productName": "知己",
+    "productName": "鲸鱼娘",
     "directories": {
       "output": "release"
     },
@@ -34,7 +34,7 @@
       "icon": "build/icon.icns"
     },
     "dmg": {
-      "title": "知己 · 安装",
+      "title": "鲸鱼娘 · 安装",
       "contents": [
         {
           "x": 130,
@@ -48,6 +48,6 @@
         }
       ]
     },
-    "artifactName": "Zhiji-${version}-${arch}.${ext}"
+    "artifactName": "WhaleChan-${version}-${arch}.${ext}"
   }
 }

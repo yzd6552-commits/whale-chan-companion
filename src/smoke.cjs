@@ -28,14 +28,14 @@ async function run(win,app){
     await waitFor(`!!document.querySelector('#review-answers')`);
     await execute(`document.querySelector('#review-answers').click();document.querySelector('#confirm-answers').click()`);
     await waitFor(`document.querySelector('.review-card .mini').textContent.includes('已确认')`);
-    let snapshot=await execute(`window.zhiji.call('state')`);assert.equal(snapshot.memories.length,1);
+    let snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.memories.length,1);
     assert.equal(snapshot.answers['daily.name'].text,'测试用户椰子');
     await execute(`document.querySelector('[data-page="memories"]').click()`);
     await waitFor(`!!document.querySelector('.memory-card')`);
     await capture('03-memories.png');
     await execute(`document.querySelector('[data-edit-memory]').click();document.querySelector('#memory-text').value='用户希望先倾听，再给建议。';document.querySelector('#save-memory').click();`);
     await waitFor(`!document.querySelector('#modal').open`);
-    snapshot=await execute(`window.zhiji.call('state')`);assert(snapshot.memories[0].text.includes('先倾听'));
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.memories[0].text.includes('先倾听'));
     const requests=[];let fail=false,slow=false;
     server=http.createServer((req,res)=>{let body='';req.on('data',b=>body+=b);req.on('end',()=>{
       const payload=JSON.parse(body);requests.push(payload);
@@ -51,13 +51,13 @@ async function run(win,app){
     await capture('04-settings.png');
     await execute(`document.querySelector('#base-url').value=${JSON.stringify(base)};document.querySelector('#model-name').value='test-model';document.querySelector('#api-key').value='test-key';document.querySelector('#settings-form').requestSubmit();`);
     await waitFor(`document.querySelector('#api-key').placeholder.includes('留空')`);
-    snapshot=await execute(`window.zhiji.call('state')`);assert(snapshot.hasKey);assert(!JSON.stringify(snapshot).includes('test-key'));
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.hasKey);assert(!JSON.stringify(snapshot).includes('test-key'));
     await execute(`document.querySelector('#new-conversation').click()`);
     await waitFor(`!!document.querySelector('#message-input')`);
     await execute(`document.querySelector('#message-input').value='我喜欢散步，先听我说。';document.querySelector('#send-message').click();`);
     await waitFor(`document.querySelector('#send-message').textContent==='发送 ↑'&&!!document.querySelector('.message.assistant')`);
     assert.equal(requests.length,2);assert(requests[0].messages[0].content.includes('先倾听'));
-    snapshot=await execute(`window.zhiji.call('state')`);assert.equal(snapshot.memories.filter(m=>m.status==='pending').length,1);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.memories.filter(m=>m.status==='pending').length,1);
     await capture('05-chat-test-service.png');
     await execute(`document.querySelector('#remember-chat').click()`);
     await waitFor(`!document.querySelector('#remember-chat').checked`);
@@ -75,7 +75,7 @@ async function run(win,app){
     await execute(`document.querySelector('#send-message').click()`);
     await waitFor(`!!document.querySelector('.error-box')&&document.querySelector('#send-message').textContent==='发送 ↑'`);
     await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);
-    snapshot=await execute(`window.zhiji.call('state')`);assert(snapshot.conversations.some(c=>c.messages.some(m=>m.role==='assistant')));
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.some(m=>m.role==='assistant')));
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);
   }catch(e){console.error('SMOKE FAIL',e);if(server){server.closeAllConnections();server.close();}app.exit(1);}

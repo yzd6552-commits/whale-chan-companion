@@ -1,9 +1,14 @@
-const {app, BrowserWindow, ipcMain, safeStorage, dialog, shell} = require('electron');
+const {app, BrowserWindow, ipcMain, safeStorage, dialog, shell, Menu} = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const {Store} = require('./store.cjs');
 const core = require('./core.cjs');
 let win, store, state, busy = false, controller, activeRequest;
+// Preserve the data directory and macOS Safe Storage keychain service across the rename.
+// Display names are provided separately by the bundle, window, menu and About panel.
+const storageIdentity = 'zhiji-companion';
+app.setName(storageIdentity);
+app.setPath('userData', path.join(app.getPath('appData'), storageIdentity));
 const testMode = process.argv.includes('--smoke-test');
 if (testMode) app.setPath('userData', path.join(app.getPath('temp'), 'zhiji-smoke-' + process.pid));
 if (!testMode && !app.requestSingleInstanceLock()) app.exit(0);
@@ -114,7 +119,7 @@ function setupHandlers() {
   register('export', async () => {
     const yes = await dialog.showMessageBox(win,{type:'question',buttons:['取消','导出'],defaultId:0,cancelId:0,message:'导出包含你的私人聊天、问卷和记忆。',detail:'文件不包含 API 密钥。请将导出文件存放在可信的位置。'});
     if (yes.response !== 1) return false;
-    const result = await dialog.showSaveDialog(win,{defaultPath:`知己备份-${new Date().toISOString().slice(0,10)}.json`,filters:[{name:'JSON 备份',extensions:['json']}]});
+    const result = await dialog.showSaveDialog(win,{defaultPath:`鲸鱼娘备份-${new Date().toISOString().slice(0,10)}.json`,filters:[{name:'JSON 备份',extensions:['json']}]});
     if (result.canceled) return false;
     fs.writeFileSync(result.filePath,JSON.stringify(state,null,2),{mode:0o600}); return true;
   });
@@ -129,9 +134,15 @@ function setupHandlers() {
   });
 }
 app.whenReady().then(async () => {
+  app.setAboutPanelOptions({applicationName:'鲸鱼娘', applicationVersion:app.getVersion()});
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {label:'鲸鱼娘',submenu:[{label:'关于鲸鱼娘',role:'about'},{type:'separator'},{label:'隐藏鲸鱼娘',role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{label:'退出鲸鱼娘',role:'quit'}]},
+    {label:'编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
+    {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'},{role:'front'}]}
+  ]));
   store = new Store(app.getPath('userData'));
   try {state = store.load();} catch (e) {dialog.showErrorBox('本地数据需要修复',e.message); app.quit(); return;}
-  win = new BrowserWindow({width:1240,height:850,minWidth:900,minHeight:650,title:'知己',backgroundColor:'#f5f8ff',titleBarStyle:'hiddenInset', webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  win = new BrowserWindow({width:1240,height:850,minWidth:900,minHeight:650,title:'鲸鱼娘',backgroundColor:'#f5f8ff',titleBarStyle:'hiddenInset', webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate',event => event.preventDefault());
   setupHandlers();

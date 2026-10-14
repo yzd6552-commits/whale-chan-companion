@@ -1,18 +1,20 @@
-# 知己 · DeepSeek 鲸鱼娘主题 AI 聊天伙伴
+# 鲸鱼娘 · DeepSeek 鲸鱼娘主题 AI 聊天伙伴
 
 一个以“逐渐认识你”为核心的 Mac AI 聊天软件。支持 48 题初次问卷、本地草稿、用户确认的长期记忆、模型 API 聊天与待确认记忆审核。没有工具执行或 Agent 功能。
 
 完整设计见 [DESIGN.md](./DESIGN.md)。
 
-![知己 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
+![鲸鱼娘 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载 Intel Mac 安装包](https://github.com/yzd6552-commits/zhiji-companion/releases/tag/v0.1.1) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载 Intel Mac 安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.2) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
 ## 使用
 
-从 [Releases](https://github.com/yzd6552-commits/zhiji-companion/releases) 下载 Intel x64 `.dmg`，打开后将“知己”拖到 Applications。源码仓库不包含编译好的 `.app`；安装包作为 Release 附件提供。
+从 [Releases](https://github.com/yzd6552-commits/whale-chan-companion/releases) 下载 Intel x64 `.dmg`，打开后将“鲸鱼娘”拖到 Applications。源码仓库不包含编译好的 `.app`；安装包作为 Release 附件提供。
+
+v0.1.2 将软件正式更名为「鲸鱼娘」。从旧版升级会继续使用已有的聊天、记忆与 API 配置；内部兼容标识保持稳定。
 
 这是未经 Apple Developer ID 签名和公证的个人原型版本，macOS 可能拦截首次运行。请先确认来源；正式公开发行仍需完成签名和公证。当前提供 Intel 版本，未提供原生 Apple Silicon 构建。
 

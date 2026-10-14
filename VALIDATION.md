@@ -1,5 +1,12 @@
 # v0.1 验证记录
 
+## v0.1.2 名称更新
+
+- 对外名称统一为「鲸鱼娘」，GitHub 仓库为 `whale-chan-companion`，安装包为 `WhaleChan-0.1.2-x64.dmg`。
+- 修改窗口、页面、侧栏、聊天称呼、系统菜单、关于面板和备份文件名。
+- 保持旧版 userData 路径、应用标识以及 macOS Safe Storage 服务名，避免改名后数据或密钥失联。
+- 8 项自动测试和 Electron 桌面流程测试通过；更新公开截图。
+
 ## v0.1.1 鲸鱼娘主题更新
 
 - 先搜索 Q 版 DeepSeek / 鲸鱼娘的实际社区形象，再修改界面。参考和素材来源记录在 `src/assets/whale/NOTICE.md`。
