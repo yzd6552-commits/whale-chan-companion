@@ -4,6 +4,7 @@ const path = require('node:path');
 const {Store} = require('./store.cjs');
 const core = require('./core.cjs');
 const {MemoryWorker} = require('./memory-worker.cjs');
+const {readChatStream} = require('./chat-stream.cjs');
 let win, store, state, busy = false, controller, activeRequest;
 const memoryWorker = new MemoryWorker({... (process.argv.includes('--smoke-test') ? {idleDelay:1500,batchDelay:500} : {}),getState:()=>state,chatBusy:()=>busy,save:()=>persist(),extract:async (turns,signal)=>{
   const existing=state.memories.filter(m=>m.status==='confirmed').slice(-50).map(m=>m.text.slice(0,500)).join('\n');
@@ -33,20 +34,21 @@ function publicState() { return {...structuredClone(state), hasKey:hasKey(), dat
 function persist() { store.save(state); win?.webContents.send('state-changed',publicState()); }
 function conv(cid) { const c = state.conversations.find(c => c.id === cid); if (!c) throw new Error('找不到这段对话。'); return c; }
 function guard() { if (busy) throw new Error('请先停止当前回复，再进行此操作。'); }
-async function completion(messages, signal, json = false) {
+async function completion(messages, signal, json = false, onText) {
   const base = core.validateEndpoint(state.settings.baseUrl);
   const key = readKey();
   if (!key || !state.settings.model.trim()) throw new Error('请先在“连接与设置”填写模型、API 地址和密钥。');
   const response = await fetch(base + '/chat/completions', {
     method:'POST', redirect:'error', signal,
     headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + key},
-    body:JSON.stringify({model:state.settings.model, messages, stream:false, ...(json ? {temperature:0.1} : {})})
+    body:JSON.stringify({model:state.settings.model, messages, stream:!!onText, ...(json ? {temperature:0.1} : {})})
   });
   if (!response.ok) {
     // Do not surface response bodies: gateways may echo headers and secrets.
     const detail = response.status === 401 ? '密钥无效或没有访问权限。' : response.status === 429 ? '请求过于频繁或账户额度不足。' : response.status === 404 ? '请检查 Base URL 和模型名称。' : '请检查服务商状态与配置。';
     throw new Error(`API 返回 ${response.status}：${detail}`);
   }
+  if (onText) return readChatStream(response,onText);
   const result = await response.json();
   const answer = result.choices?.[0]?.message?.content;
   if (typeof answer !== 'string' || !answer.trim()) throw new Error('模型没有返回文本回复。请检查模型是否兼容聊天接口。');
@@ -95,15 +97,24 @@ function setupHandlers() {
     c.messages.push({id:core.id(), role:'user', content:text, createdAt:core.now()});
     if (c.messages.length === 1) c.title = text.slice(0,22);
     persist();
+    let reply, lastSave=0;
     try {
-      const content = await completion(built.messages,signal);
-      c.messages.push({id:core.id(), role:'assistant', content, createdAt:core.now()});
+      const content = await completion(built.messages,signal,false,delta=>{
+        if (!reply) {reply={id:core.id(),role:'assistant',content:'',partial:true,createdAt:core.now()};c.messages.push(reply);}
+        reply.content+=delta;
+        win.webContents.send('chat-stream',{cid,id:reply.id,content:reply.content,createdAt:reply.createdAt});
+        if(Date.now()-lastSave>=1000){store.save(state);lastSave=Date.now();}
+      });
+      delete reply.partial;
       memoryWorker.enqueue(c,text,content);persist();
       return result;
+    } catch(e) {
+      if (signal.aborted) throw new Error(reply?'已停止生成，已收到的回复保存在本机。':'已停止生成。已发送的用户消息仍保存在本地。');
+      throw e;
     } finally {clearTimeout(timeout); busy = false; activeRequest = null; controller = null; persist();memoryWorker.schedule();}
   });
   register('stop', () => {controller?.abort(); return true;});
-  register('retry', cid => {guard(); const c = conv(cid); const last = c.messages.at(-1); if (!last || last.role !== 'user') throw new Error('没有需要重试的消息。'); c.messages.pop(); persist(); return last.content;});
+  register('retry', cid => {guard(); const c = conv(cid); if(c.messages.at(-1)?.partial)c.messages.pop(); const last = c.messages.at(-1); if (!last || last.role !== 'user') throw new Error('没有需要重试的消息。'); c.messages.pop(); persist(); return last.content;});
   register('settings-save', data => {
     guard();
     const baseUrl = core.validateEndpoint(String(data.baseUrl || '').trim());

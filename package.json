@@ -1,6 +1,6 @@
 {
   "name": "whale-chan-companion",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "鲸鱼娘 · 保存在你身边的长期记忆聊天伙伴",
   "main": "src/main.cjs",
   "author": "yzd6552-commits",

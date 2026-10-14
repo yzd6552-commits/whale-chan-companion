@@ -46,7 +46,7 @@ const system = `你是“鲸鱼娘”，一个用中文自然聊天、通过长�
 function payload(state, conversation, text) {
   const memories = retrieve(state, text);
   const memoryText = memories.map(m => `[${m.updatedAt.slice(0,10)} · ${m.source}] ${m.text.slice(0,1800)}`).join('\n\n');
-  const history = conversation.messages.filter(m => ['user','assistant'].includes(m.role) && m.content).slice(-24).map(m => ({role: m.role, content: m.content.slice(0,20000)}));
+  const history = conversation.messages.filter(m => ['user','assistant'].includes(m.role) && m.content && !m.partial).slice(-24).map(m => ({role: m.role, content: m.content.slice(0,20000)}));
   return { memories, messages: [{role: 'system', content: system + (memoryText ? '\n\n以下为用户确认的记忆：\n<user_memory>\n' + memoryText + '\n</user_memory>' : '\n目前没有已确认的个人记忆，请通过对话慢慢认识用户。')}, ...history, {role: 'user', content: text}] };
 }
 function addCandidates(state, candidates, conversationId) {

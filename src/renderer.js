@@ -6,7 +6,7 @@ const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const esc = escapeHtml;
-let state, page='chat', currentId, questionIndex=null, reviewing=false, memoryTab='confirmed', search='', generating=false, stage='', sendError='', pendingSave=Promise.resolve(), toastTimer;
+let state, page='chat', currentId, questionIndex=null, reviewing=false, memoryTab='confirmed', search='', generating=false, generatingId=null, stage='', sendError='', pendingSave=Promise.resolve(), toastTimer;
 let memoryDraft=null;
 function toast(message) {$('#toast').textContent=message; $('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),5000);}
 async function call(channel,...args) {try {return await api.call(channel,...args);} catch(e) {throw new Error(e.message.replace(/^Error invoking remote method '[^']+': Error: /,''));}}
@@ -36,7 +36,7 @@ function renderChat() {
   const c=state.conversations.find(c=>c.id===currentId);
   const messages=c?.messages||[];
   const right=`<label class="check"><input id="remember-chat" type="checkbox" ${c?.remember!==false?'checked':''} ${generating?'disabled':''}>允许整理待确认记忆</label>`;
-  $('#main').innerHTML=`<section class="chat-page">${topbar('一起聊聊',right)}<div class="chat-body" id="chat-body">${messages.length?`<div class="chat-feed">${messages.map(m=>`<article class="message ${m.role}"><div class="avatar">${m.role==='user'?'你':'<img src="assets/whale/avatar.png" alt="鲸鱼娘">'}</div><div><div class="message-label">${m.role==='user'?'你':'鲸鱼娘'}</div><div class="message-content">${esc(m.content)}</div></div></article>`).join('')}${generating?`<div class="status-text" role="status">◌ &nbsp;${esc(stage||'正在认真读你的话…')}</div>`:''}</div>`:welcome()}${sendError?`<div class="error-box">${esc(sendError)} <button class="text-button" id="retry-message">重试上一条</button></div>`:''}</div><div class="composer-wrap"><div class="composer"><textarea id="message-input" aria-label="消息" placeholder="今天，想从什么聊起？" maxlength="20000" ${generating?'disabled':''}></textarea><div class="composer-actions"><button id="preview-message" class="text-button">查看本次发送内容</button><button id="send-message" class="button">${generating?'停止生成':'发送 ↑'}</button></div></div><div class="composer-footer">聊天记录保存在本机 · 回复通过你选择的模型 API 生成${!state.hasKey?' · 请先在设置中连接模型':''}<br>Enter 发送，Shift + Enter 换行 · AI 可能理解错，你随时可以纠正它。</div></div></section>`;
+  $('#main').innerHTML=`<section class="chat-page">${topbar('一起聊聊',right)}<div class="chat-body" id="chat-body">${messages.length?`<div class="chat-feed">${messages.map(m=>`<article class="message ${m.role}" data-message="${esc(m.id)}"><div class="avatar">${m.role==='user'?'你':'<img src="assets/whale/avatar.png" alt="鲸鱼娘">'}</div><div><div class="message-label">${m.role==='user'?'你':'鲸鱼娘'}${m.partial?(generating&&generatingId===c.id?' · 正在回复':' · 未完成'):''}</div><div class="message-content ${m.partial&&generating&&generatingId===c.id?'streaming':''}">${esc(m.content)}</div></div></article>`).join('')}${generating&&generatingId===c?.id?`<div class="status-text" role="status">◌ &nbsp;${esc(stage||'正在认真读你的话…')}</div>`:''}</div>`:welcome()}${sendError?`<div class="error-box">${esc(sendError)} <button class="text-button" id="retry-message">重试上一条</button></div>`:''}</div><div class="composer-wrap"><div class="composer"><textarea id="message-input" aria-label="消息" placeholder="今天，想从什么聊起？" maxlength="20000" ${generating?'disabled':''}></textarea><div class="composer-actions"><button id="preview-message" class="text-button">查看本次发送内容</button><button id="send-message" class="button">${generating?'停止生成':'发送 ↑'}</button></div></div><div class="composer-footer">聊天记录保存在本机 · 回复通过你选择的模型 API 生成${!state.hasKey?' · 请先在设置中连接模型':''}<br>Enter 发送，Shift + Enter 换行 · AI 可能理解错，你随时可以纠正它。</div></div></section>`;
   $('#send-message').onclick=()=>generating?safe(()=>call('stop')):safe(()=>send());
   $('#message-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();if(!generating)safe(()=>send());}};
   $('#preview-message').onclick=()=>safe(()=>preview());
@@ -52,8 +52,8 @@ async function ensureConversation(){if(!currentId){const remember=$('#remember-c
 async function send(input,expected){
   const text=typeof input==='string'?input:$('#message-input').value.trim();if(!text)return;
   if(!state.hasKey){toast('请先连接模型 API；问卷可以先离线填写。');page='settings';render();return;}
-  await ensureConversation();generating=true;stage='正在认真读你的话…';sendError='';render();
-  try{const result=await call('send',currentId,text,expected);if(result.warning)toast(result.warning);}catch(e){sendError=e.message;}finally{generating=false;state=await call('state');if(page==='chat')renderChat();updateSidebar();}
+  await ensureConversation();generating=true;generatingId=currentId;stage='正在认真读你的话…';sendError='';render();
+  try{const result=await call('send',currentId,text,expected);if(result.warning)toast(result.warning);}catch(e){sendError=e.message;}finally{generating=false;generatingId=null;state=await call('state');if(page==='chat')renderChat();updateSidebar();}
 }
 async function preview(){
   const text=$('#message-input').value.trim();if(!text){toast('先写一句话，再查看本次会发送什么。');return;}
@@ -125,6 +125,18 @@ function closeModal(){$('#modal').close();}
 function confirmDialog(title,description,fn){modal(`<h2>${esc(title)}</h2><p class="muted">${esc(description)}</p><div class="dialog-footer"><button class="button secondary" id="cancel-dialog">取消</button><button class="button" id="confirm-dialog">确认</button></div>`);$('#cancel-dialog').onclick=closeModal;$('#confirm-dialog').onclick=()=>{closeModal();safe(fn);};}
 $$('[data-page]').forEach(b=>b.onclick=()=>safe(async()=>{await pendingSave;page=b.dataset.page;render();}));
 $('#new-conversation').onclick=()=>safe(async()=>{await pendingSave;currentId=await call('conversation-new');state=await call('state');page='chat';sendError='';render();});
+api.onStream(data=>{
+  const c=state.conversations.find(c=>c.id===data.cid);if(!c)return;
+  let message=c.messages.find(m=>m.id===data.id);
+  if(!message){message={id:data.id,role:'assistant',partial:true,createdAt:data.createdAt};c.messages.push(message);}
+  message.content=data.content;
+  if(page!=='chat'||currentId!==data.cid)return;
+  const element=$(`[data-message="${data.id}"] .message-content`);
+  if(!element){stage='正在回复…';renderChat();return;}
+  const body=$('#chat-body'),follow=body.scrollHeight-body.scrollTop-body.clientHeight<100;
+  element.textContent=data.content;
+  if(follow)body.scrollTop=body.scrollHeight;
+});
 api.onState(data=>{state=data;updateSidebar();});
 api.onStage(text=>{stage=text;if(page==='chat'&&generating)renderChat();});
 call('state').then(data=>{state=data;render();if(state.recovered)toast('已从上一份本地备份恢复数据。损坏文件已保留，请导出备份。');}).catch(e=>{$('#main').innerHTML=`<div class="loading">${esc(e.message)}</div>`;});

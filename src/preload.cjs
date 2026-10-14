@@ -3,5 +3,6 @@ const channels = ['state','answer','confirm-answers','memory-save','memory-delet
 contextBridge.exposeInMainWorld('companion', {
   call: (channel,...args) => {if (!channels.includes(channel)) return Promise.reject(new Error('不支持的操作')); return ipcRenderer.invoke(channel,...args);},
   onState: fn => ipcRenderer.on('state-changed',(_,data) => fn(data)),
+  onStream: fn => ipcRenderer.on('chat-stream',(_,data) => fn(data)),
   onStage: fn => ipcRenderer.on('generation-stage',(_,stage) => fn(stage))
 });
