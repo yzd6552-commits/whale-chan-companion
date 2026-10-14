@@ -1,0 +1,53 @@
+{
+  "name": "zhiji-companion",
+  "version": "0.1.1",
+  "description": "知己 · 保存在你身边的长期记忆聊天伙伴",
+  "main": "src/main.cjs",
+  "author": "Zhiji",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "pack": "electron-builder --mac dir --x64",
+    "dist": "electron-builder --mac dmg --x64"
+  },
+  "devDependencies": {
+    "electron": "43.7.11",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "local.zhiji.companion",
+    "productName": "知己",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.lifestyle",
+      "target": [
+        "dmg"
+      ],
+      "identity": null,
+      "icon": "build/icon.icns"
+    },
+    "dmg": {
+      "title": "知己 · 安装",
+      "contents": [
+        {
+          "x": 130,
+          "y": 160
+        },
+        {
+          "x": 410,
+          "y": 160,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "artifactName": "Zhiji-${version}-${arch}.${ext}"
+  }
+}

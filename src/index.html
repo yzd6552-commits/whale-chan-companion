@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>知己</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon"><img src="assets/whale/avatar.png" alt="Q版鲸鱼娘"></span><div>知己<small>小鲸鱼的记忆小屋</small></div></div>
+    <div class="nav-caption">我们的空间</div>
+    <nav>
+      <button data-page="chat" class="nav-item active"><span>◌</span>一起聊聊</button>
+      <button data-page="onboarding" class="nav-item"><span>✳</span>初次认识 <i id="question-count"></i></button>
+      <button data-page="memories" class="nav-item"><span>▧</span>关于我的记忆 <i id="pending-count"></i></button>
+    </nav>
+    <div class="conversation-heading">最近的对话<button id="new-conversation" title="新建对话" aria-label="新建对话">＋</button></div>
+    <div id="conversation-list" class="conversation-list"></div>
+    <div class="sidebar-companion"><img src="assets/whale/sleepy.png" alt="打盹的Q版鲸鱼娘"><p>小鲸鱼，在这里等你。</p></div>
+    <div class="sidebar-bottom"><div class="local-status"><span></span>数据留在这台 Mac</div><button data-page="settings" class="nav-item"><span>⚙</span>连接与设置</button><div class="version">知己 · 0.1.1 &nbsp; <button class="theme-credit" id="theme-credit">鲸鱼娘社区主题</button></div></div>
+  </aside>
+  <main id="main"></main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <script src="questions.js"></script><script src="renderer.js"></script>
+</body>
+</html>
