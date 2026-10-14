@@ -1,0 +1,65 @@
+name: Build desktop packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: mac-arm64
+            os: macos-15
+            command: npm run dist:mac:arm64
+          - target: mac-x64
+            os: macos-15-intel
+            command: npm run dist:mac:x64
+          - target: windows-x64
+            os: windows-2025
+            command: npm run dist:win
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test memory and storage
+        run: npm test
+      - name: Test desktop questionnaire, API and key storage
+        run: npm run smoke
+      - name: Build native package
+        run: ${{ matrix.command }}
+      - name: Verify macOS disk image
+        if: runner.os == 'macOS'
+        run: hdiutil verify release/*.dmg
+      - name: Upload installer
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: whale-chan-${{ matrix.target }}
+          path: |
+            release/*.dmg
+            release/*.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Upload desktop test screenshots
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: desktop-test-${{ matrix.target }}
+          path: test-output/*.png
+          if-no-files-found: ignore
+          retention-days: 7

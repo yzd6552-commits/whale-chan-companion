@@ -1,6 +1,6 @@
 {
   "name": "whale-chan-companion",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "鲸鱼娘 · 保存在你身边的长期记忆聊天伙伴",
   "main": "src/main.cjs",
   "author": "yzd6552-commits",
@@ -9,7 +9,11 @@
     "start": "electron .",
     "test": "node --test test/*.test.cjs",
     "pack": "electron-builder --mac dir --x64",
-    "dist": "electron-builder --mac dmg --x64"
+    "dist": "electron-builder --publish never",
+    "smoke": "electron . --smoke-test",
+    "dist:mac:arm64": "electron-builder --mac dmg --arm64 --publish never",
+    "dist:mac:x64": "electron-builder --mac dmg --x64 --publish never",
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "43.7.11",
@@ -48,6 +52,20 @@
         }
       ]
     },
-    "artifactName": "WhaleChan-${version}-${arch}.${ext}"
+    "artifactName": "WhaleChan-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "鲸鱼娘"
+    }
   }
 }

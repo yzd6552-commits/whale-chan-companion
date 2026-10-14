@@ -136,13 +136,13 @@ function setupHandlers() {
 app.whenReady().then(async () => {
   app.setAboutPanelOptions({applicationName:'鲸鱼娘', applicationVersion:app.getVersion()});
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {label:'鲸鱼娘',submenu:[{label:'关于鲸鱼娘',role:'about'},{type:'separator'},{label:'隐藏鲸鱼娘',role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{label:'退出鲸鱼娘',role:'quit'}]},
+    ...(process.platform === 'darwin' ? [{label:'鲸鱼娘',submenu:[{label:'关于鲸鱼娘',role:'about'},{type:'separator'},{label:'隐藏鲸鱼娘',role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{label:'退出鲸鱼娘',role:'quit'}]}] : [{label:'文件',submenu:[{label:'关于鲸鱼娘',role:'about'},{type:'separator'},{label:'退出鲸鱼娘',role:'quit'}]}]),
     {label:'编辑',submenu:[{role:'undo'},{role:'redo'},{type:'separator'},{role:'cut'},{role:'copy'},{role:'paste'},{role:'selectAll'}]},
-    {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'},{role:'front'}]}
+    {label:'窗口',submenu:[{role:'minimize'},{role:'zoom'},...(process.platform === 'darwin' ? [{role:'front'}] : [{role:'close'}])]}
   ]));
   store = new Store(app.getPath('userData'));
   try {state = store.load();} catch (e) {dialog.showErrorBox('本地数据需要修复',e.message); app.quit(); return;}
-  win = new BrowserWindow({width:1240,height:850,minWidth:900,minHeight:650,title:'鲸鱼娘',backgroundColor:'#f5f8ff',titleBarStyle:'hiddenInset', webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  win = new BrowserWindow({width:1240,height:850,minWidth:900,minHeight:650,title:'鲸鱼娘',backgroundColor:'#f5f8ff',...(process.platform === 'darwin' ? {titleBarStyle:'hiddenInset'} : {}), webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   win.webContents.setWindowOpenHandler(() => ({action:'deny'}));
   win.webContents.on('will-navigate',event => event.preventDefault());
   setupHandlers();
