@@ -6,7 +6,7 @@
 
 ![鲸鱼娘 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.5) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.6) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
@@ -16,9 +16,9 @@ v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、
 
 | 设备 | 安装包 | 安装方式 |
 | --- | --- | --- |
-| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.5-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Mac，Intel 芯片 | `WhaleChan-0.1.5-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.5-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
+| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.6-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Mac，Intel 芯片 | `WhaleChan-0.1.6-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.6-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
 
 在 Mac 的“关于本机”查看芯片。Windows 版本为 x64，未提供 Windows ARM64 或 32 位版本。各版数据分别保存在所在设备，不会自动互通。源码仓库不包含编译好的应用；安装包作为 Release 附件提供。
 
@@ -80,3 +80,5 @@ npm run dist:win
 记忆整理在后台进行：累计 5 轮后空闲 15 秒，或少量对话空闲 2 分钟后整理。回复结束即可继续输入，新聊天会中断后台整理；队列保存在本机，下次继续。关闭会话或全局记忆整理会清除相应队列。
 
 聊天默认采用流式回复：文字边生成边显示，支持停止并保留已收到的部分。中断的回复标为未完成，不参与后续上下文和记忆提取；可以重试。若 API 网关忽略流式参数并返回普通 JSON，会兼容显示整段回复。
+
+token 用量直接读取 API 的 usage：每条回复显示输入、输出和总计；聊天页显示今日已报告总量；设置按聊天、后台记忆整理、连接测试分别展示今日及累计。每日按北京时间的请求结束日归档。未知消耗单独计数，不按字数估算，不当作零；旧版消耗无法补回。用量保存在本机，删除会话不会减少累计，清空全部数据会重置。

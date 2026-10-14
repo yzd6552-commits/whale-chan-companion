@@ -1,7 +1,8 @@
 // Decode data-only SSE without assuming network chunks align with events or UTF-8.
-async function readChatStream(response, onText) {
+async function readChatStream(response, onText, onUsage=()=>{}) {
   if (!response.headers.get('content-type')?.includes('text/event-stream')) {
-    const answer=(await response.json()).choices?.[0]?.message?.content;
+    const result=await response.json();onUsage(result.usage);
+    const answer=result.choices?.[0]?.message?.content;
     if (typeof answer!=='string'||!answer.trim()) throw Error('模型没有返回文本回复。');
     const text=answer.slice(0,100000);onText(text);return text;
   }
@@ -13,6 +14,7 @@ async function readChatStream(response, onText) {
     if(data.trim()==='[DONE]'){ended=true;return;}
     let packet;try{packet=JSON.parse(data);}catch{throw Error('模型返回的流式数据格式不正确。');}
     if(packet.error)throw Error('模型流式回复出错，请稍后重试。');
+    if(packet.usage)onUsage(packet.usage);
     const choice=packet.choices?.[0];
     if(choice?.finish_reason!=null)finished=true;
     const text=choice?.delta?.content;

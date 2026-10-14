@@ -21,3 +21,8 @@ test('stream errors are sanitized and invalid data is rejected',async()=>{
  await assert.rejects(readChatStream(response('data: {"error":{"message":"secret-key"}}\n\n'),()=>{}),e=>!e.message.includes('secret-key'));
  await assert.rejects(readChatStream(response('data: bad-json\n\n'),()=>{}),/格式/);
 });
+test('stream usage-only event is captured once after text',async()=>{
+ const usage={prompt_tokens:100,completion_tokens:20,total_tokens:120},reported=[];
+ const input=packet('回复')+'data: '+JSON.stringify({choices:[],usage})+'\n\ndata: [DONE]\n\n';
+ assert.equal(await readChatStream(response(input),()=>{},u=>reported.push(u)),'回复');assert.deepEqual(reported,[usage]);
+});

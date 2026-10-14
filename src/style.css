@@ -160,3 +160,8 @@ dialog .memory-edit{min-height:150px;resize:vertical;line-height:1.8;margin-bott
 .message-content.streaming::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 3px; background: currentColor; vertical-align: -0.1em; animation: reply-cursor 0.9s steps(2, start) infinite; }
 @keyframes reply-cursor { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .message-content.streaming::after { animation: none; } }
+
+.message-usage { margin-top: 12px; color: var(--muted, #7686a3); font-size: 11px; }
+.usage-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: right; margin: 16px 0; }
+.usage-table th, .usage-table td { padding: 8px 4px; border-bottom: 1px solid #e7ecfa; }
+.usage-table th:first-child, .usage-table td:first-child { text-align: left; }

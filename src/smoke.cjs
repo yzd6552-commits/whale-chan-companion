@@ -46,10 +46,10 @@ async function run(win,app){
         const chunk=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\n\n';
         res.write(chunk('我在听。'));
         if(slow)return; // cancellation after partial text
-        const timer=setTimeout(()=>res.end(chunk('你愿意从今天发生的事开始说吗？')+'data: [DONE]\n\n'),1200);
+        const timer=setTimeout(()=>res.end(chunk('你愿意从今天发生的事开始说吗？')+'data: '+JSON.stringify({choices:[],usage:{prompt_tokens:100,completion_tokens:20,total_tokens:120}})+'\n\ndata: [DONE]\n\n'),1200);
         res.on('close',()=>clearTimeout(timer));return;
       }
-      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{message:{content:extract?JSON.stringify({memories:[{text:'用户表示喜欢散步',category:'daily'}]}):'我在听。你愿意从今天发生的事开始说吗？'}}]}));
+      res.setHeader('Content-Type','application/json');res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:extract?JSON.stringify({memories:[{text:'用户表示喜欢散步',category:'daily'}]}):'我在听。你愿意从今天发生的事开始说吗？'}}]}));
     });});
     await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
     const base='http://127.0.0.1:'+server.address().port+'/v1';
@@ -63,7 +63,7 @@ async function run(win,app){
     await waitFor(`!!document.querySelector('#message-input')`);
     await execute(`document.querySelector('#message-input').value='我喜欢散步，先听我说。';document.querySelector('#send-message').click();`);
     await waitFor(`document.querySelector('.message.assistant .message-content')?.textContent==='我在听。'&&document.querySelector('#send-message').textContent==='停止生成'`);
-    assert.equal(requests.length,1);assert.equal(requests[0].stream,true);
+    assert.equal(requests.length,1);assert.equal(requests[0].stream,true);assert.equal(requests[0].stream_options.include_usage,true);
     await capture('05-streaming-reply.png');
     await waitFor(`document.querySelector('#send-message').textContent==='发送 ↑'&&!!document.querySelector('.message.assistant')`);
     assert.equal(requests.length,1);
@@ -71,6 +71,10 @@ async function run(win,app){
     await waitFor(`window.companion.call('state').then(s=>s.memories.some(m=>m.status==='pending'))`);
     assert.equal(requests.length,2);assert(requests[0].messages[0].content.includes('先倾听'));
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.memories.filter(m=>m.status==='pending').length,1);
+    assert.equal(snapshot.usage.byKind.chat.total,120);assert.equal(snapshot.usage.byKind.memory.total,45);
+    assert.equal(snapshot.usage.days[snapshot.usageDay].chat.total,120);
+    assert((await execute(`document.querySelector('.message-usage').textContent`)).includes('120'));
+    assert((await execute(`document.querySelector('#today-usage').textContent`)).includes('165'));
     await capture('05-chat-test-service.png');
     await execute(`document.querySelector('#remember-chat').click()`);
     await waitFor(`!document.querySelector('#remember-chat').checked`);
@@ -87,9 +91,13 @@ async function run(win,app){
     await waitFor(`document.querySelector('#send-message').textContent==='停止生成'&&document.querySelectorAll('.message.assistant').length===3`);
     await execute(`document.querySelector('#send-message').click()`);
     await waitFor(`!!document.querySelector('.error-box')&&document.querySelector('#send-message').textContent==='发送 ↑'`);
-    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.at(-1)?.partial));
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.at(-1)?.partial));assert.equal(snapshot.usage.byKind.chat.unreported,2);
     await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);
-    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.some(m=>m.role==='assistant')));
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.some(m=>m.role==='assistant')));assert.equal(snapshot.usage.byKind.chat.total,240);
+    await execute(`document.querySelector('[data-page="settings"]').click()`);
+    await waitFor(`!!document.querySelector('#usage-panel')`);
+    assert((await execute(`document.querySelector('#usage-panel').textContent`)).includes('285'));
+    await capture('06-token-usage.png');
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);
   }catch(e){console.error('SMOKE FAIL',e);if(server){server.closeAllConnections();server.close();}app.exit(1);}
