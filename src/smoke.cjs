@@ -56,6 +56,9 @@ async function run(win,app){
     await waitFor(`!!document.querySelector('#message-input')`);
     await execute(`document.querySelector('#message-input').value='我喜欢散步，先听我说。';document.querySelector('#send-message').click();`);
     await waitFor(`document.querySelector('#send-message').textContent==='发送 ↑'&&!!document.querySelector('.message.assistant')`);
+    assert.equal(requests.length,1);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.conversations.at(-1).memoryQueue.length,1);
+    await waitFor(`window.companion.call('state').then(s=>s.memories.some(m=>m.status==='pending'))`);
     assert.equal(requests.length,2);assert(requests[0].messages[0].content.includes('先倾听'));
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.memories.filter(m=>m.status==='pending').length,1);
     await capture('05-chat-test-service.png');
