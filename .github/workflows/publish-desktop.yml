@@ -1,0 +1,56 @@
+name: Publish verified desktop packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build desktop packages run ID
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require successful native builds and matching application code
+        shell: bash
+        run: |
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID" > build-run.json
+          node - <<'JS'
+          const fs = require('fs');
+          const run = JSON.parse(fs.readFileSync('build-run.json'));
+          if (run.conclusion !== 'success' || run.path !== '.github/workflows/build-desktop.yml') throw Error('A successful desktop build is required');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'BUILD_SHA=' + run.head_sha + '\n');
+          JS
+          BUILD_SHA=$(node -p "require('./build-run.json').head_sha")
+          git diff --exit-code "$BUILD_SHA" HEAD -- src package.json package-lock.json build scripts test
+      - name: Download the three native installers and write checksums
+        shell: bash
+        run: |
+          gh run download "$BUILD_RUN_ID" --pattern 'whale-chan-*' --dir release-assets
+          mapfile -d '' files < <(find release-assets -type f \( -name '*.dmg' -o -name '*.exe' \) -print0)
+          [[ "${#files[@]}" == 3 ]]
+          mkdir publish-files
+          cp -- "${files[@]}" publish-files/
+          cd publish-files
+          sha256sum *.dmg *.exe > SHA256SUMS.txt
+      - name: Publish preview release
+        shell: bash
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          gh release create "$TAG" publish-files/* --target "$GITHUB_SHA" --title "鲸鱼娘 $TAG · Mac 与 Windows" --notes-file docs/release-v0.1.3.md --prerelease --draft
+          gh release edit "$TAG" --draft=false

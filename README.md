@@ -1,22 +1,30 @@
 # 鲸鱼娘 · DeepSeek 鲸鱼娘主题 AI 聊天伙伴
 
-一个以“逐渐认识你”为核心的 Mac AI 聊天软件。支持 48 题初次问卷、本地草稿、用户确认的长期记忆、模型 API 聊天与待确认记忆审核。没有工具执行或 Agent 功能。
+一个以“逐渐认识你”为核心的桌面 AI 聊天软件，支持 macOS 和 Windows。包含 48 题初次问卷、本地草稿、用户确认的长期记忆、模型 API 聊天与待确认记忆审核。没有工具执行或 Agent 功能。
 
 完整设计见 [DESIGN.md](./DESIGN.md)。
 
 ![鲸鱼娘 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载 Intel Mac 安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.2) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.3) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
 ## 使用
 
-从 [Releases](https://github.com/yzd6552-commits/whale-chan-companion/releases) 下载 Intel x64 `.dmg`，打开后将“鲸鱼娘”拖到 Applications。源码仓库不包含编译好的 `.app`；安装包作为 Release 附件提供。
+从 [Releases](https://github.com/yzd6552-commits/whale-chan-companion/releases) 下载适合设备的安装包：
+
+| 设备 | 安装包 | 安装方式 |
+| --- | --- | --- |
+| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.3-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Mac，Intel 芯片 | `WhaleChan-0.1.3-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.3-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
+
+在 Mac 的“关于本机”查看芯片。Windows 版本为 x64，未提供 Windows ARM64 或 32 位版本。各版数据分别保存在所在设备，不会自动互通。源码仓库不包含编译好的应用；安装包作为 Release 附件提供。
 
 v0.1.2 将软件正式更名为「鲸鱼娘」。从旧版升级会继续使用已有的聊天、记忆与 API 配置；内部兼容标识保持稳定。
 
-这是未经 Apple Developer ID 签名和公证的个人原型版本，macOS 可能拦截首次运行。请先确认来源；正式公开发行仍需完成签名和公证。当前提供 Intel 版本，未提供原生 Apple Silicon 构建。
+当前为预览软件。Mac 版未进行 Apple Developer ID 签名和公证，Windows 版未进行代码签名，系统可能拦截或提示首次运行，请先确认来源。
 
 1. 可先离线填写“初次认识”，每题自动保存，支持跳过。
 2. 在“回顾与确认”选择要纳入长期记忆的答案。
@@ -30,19 +38,23 @@ v0.1.2 将软件正式更名为「鲸鱼娘」。从旧版升级会继续使用�
 
 数据路径见设置页。`journal.json` 为主文件，`.bak` 是前一次保存；损坏时保留损坏文件并尝试备份。导出备份不包含密钥。当前可导出 JSON；尚未提供导入界面，恢复可在退出软件后用备份替换数据目录中的 `journal.json`（先备份原目录）。
 
-当前没有 iPhone 客户端或设备同步，下一阶段才实现配对和私人网络互通。当前 Mac 版本可以独立使用，不监听远程端口。
+当前没有 iPhone 客户端或设备同步，下一阶段才实现配对和私人网络互通。桌面版本可以独立使用，不监听远程端口。
 
 ## 开发
 
-需要 Node.js/npm。建议 Node.js 24；打包 macOS 安装包需要在 Mac 上运行。Electron 43 用于支持 Intel Mac；升级时需检查目标架构支持情况。
+需要 Node.js/npm，建议 Node.js 24。使用 Electron 43，同时支持 Intel Mac 和 Apple Silicon。建议在目标平台构建与测试；macOS 安装包需要在 Mac 上构建，Windows NSIS 安装包在 Windows 上构建。
 
 ```sh
 npm ci
 npm start
 npm test
 ./node_modules/.bin/electron . --smoke-test
-npm run dist
+npm run dist:mac:arm64
+npm run dist:mac:x64
+npm run dist:win
 ```
+
+按实际平台选择最后三个构建命令之一。也可以使用 `npm run dist` 按当前平台和架构构建。仓库的 `Build desktop packages` GitHub Actions 工作流提供手动触发的三个原生构建任务，并运行自动测试与桌面流程测试；不使用用户的 API 密钥或私人数据。
 
 生成产物位于 `release/`。问卷和本地记忆管理可以离线使用；API 聊天需要填写自己的服务商配置，仓库不提供密钥。
 
@@ -56,7 +68,7 @@ npm run dist
 - 长期记忆检索为本地中文二元词项匹配，最多 18 条；尚无向量检索、自动遗忘或冲突分析。
 - 单次聊天只发送本会话最近 24 条消息；完整历史仍保存在本地。
 - 当前没有后台自动总结人格，也不保证一次问卷能准确理解一个人。
-- 没有签名、公证、自动更新或应用商店发布。
+- 没有代码签名、公证、自动更新或应用商店发布。
 - 当前为个人原型。原创应用代码暂未指定开源许可证；公开可见不代表已授予任意再分发或商业使用许可。
 
 ## 主题素材与署名
