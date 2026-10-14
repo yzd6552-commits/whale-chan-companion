@@ -10,6 +10,10 @@ const storageIdentity = 'zhiji-companion';
 app.setName(storageIdentity);
 app.setPath('userData', path.join(app.getPath('appData'), storageIdentity));
 const testMode = process.argv.includes('--smoke-test');
+// CI runs the development and packaged apps under different macOS code signatures.
+// Give each test process its own keychain service so OS authorization does not
+// require an interactive prompt to access the other process's test-only key.
+if (testMode && process.env.CI) app.setName('whale-ci-smoke-' + process.pid);
 if (testMode) app.setPath('userData', path.join(app.getPath('temp'), 'zhiji-smoke-' + process.pid));
 if (!testMode && !app.requestSingleInstanceLock()) app.exit(0);
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
