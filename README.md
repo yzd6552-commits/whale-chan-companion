@@ -6,7 +6,7 @@
 
 ![知己 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载 Intel Mac 安装包](https://github.com/yzd6552-commits/zhiji-companion/releases/latest) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载 Intel Mac 安装包](https://github.com/yzd6552-commits/zhiji-companion/releases/tag/v0.1.1) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
