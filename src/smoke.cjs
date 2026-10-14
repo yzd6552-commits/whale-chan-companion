@@ -97,6 +97,7 @@ async function run(win,app){
     await execute(`document.querySelector('[data-page="settings"]').click()`);
     await waitFor(`!!document.querySelector('#usage-panel')`);
     assert((await execute(`document.querySelector('#usage-panel').textContent`)).includes('285'));
+    await execute(`document.querySelector('#usage-panel').scrollIntoView({block:'start'})`);
     await capture('06-token-usage.png');
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);
