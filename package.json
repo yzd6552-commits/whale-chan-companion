@@ -13,7 +13,8 @@
     "smoke": "electron . --smoke-test",
     "dist:mac:arm64": "electron-builder --mac dmg --arm64 --publish never",
     "dist:mac:x64": "electron-builder --mac dmg --x64 --publish never",
-    "dist:win": "electron-builder --win nsis --x64 --publish never"
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "smoke:packaged": "node scripts/smoke-packaged.cjs"
   },
   "devDependencies": {
     "electron": "43.7.11",
@@ -34,8 +35,9 @@
       "target": [
         "dmg"
       ],
-      "identity": null,
-      "icon": "build/icon.icns"
+      "identity": "-",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": false
     },
     "dmg": {
       "title": "鲸鱼娘 · 安装",

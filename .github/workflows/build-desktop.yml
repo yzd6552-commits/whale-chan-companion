@@ -39,9 +39,13 @@ jobs:
       - name: Test memory and storage
         run: npm test
       - name: Test desktop questionnaire, API and key storage
+        timeout-minutes: 3
         run: npm run smoke
       - name: Build native package
         run: ${{ matrix.command }}
+      - name: Test packaged app on native operating system
+        timeout-minutes: 3
+        run: npm run smoke:packaged
       - name: Verify macOS disk image
         if: runner.os == 'macOS'
         run: hdiutil verify release/*.dmg
