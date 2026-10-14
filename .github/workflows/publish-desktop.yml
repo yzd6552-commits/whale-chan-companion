@@ -34,7 +34,6 @@ jobs:
           const fs = require('fs');
           const run = JSON.parse(fs.readFileSync('build-run.json'));
           if (run.conclusion !== 'success' || run.path !== '.github/workflows/build-desktop.yml') throw Error('A successful desktop build is required');
-          fs.appendFileSync(process.env.GITHUB_ENV, 'BUILD_SHA=' + run.head_sha + '\n');
           JS
           BUILD_SHA=$(node -p "require('./build-run.json').head_sha")
           git diff --exit-code "$BUILD_SHA" HEAD -- src package.json package-lock.json build scripts test
