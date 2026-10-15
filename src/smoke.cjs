@@ -45,8 +45,15 @@ async function run(win,app){
         const input=JSON.parse(payload.messages[1].content);assert(input.memories.length<=1);assert(!JSON.stringify(input).includes('用户表示喜欢散步'));
         const sourceIds=input.memories.length?[input.memories[0].id]:[],feedback=input.companion?.feedback?.at(-1);
         const companion=feedback?{adjustments:[{dimension:'humor',value:2,reason:'明确的相处反馈',sourceIds:[feedback.id]},{dimension:'length',value:0,reason:'明显的表达变化先审核',sourceIds:[feedback.id]}],suggestions:[{kind:'address',text:'称呼待确认测试',reason:'称呼需审核',sourceIds:[feedback.id]},{kind:'habit',text:'共同玩笑待确认测试',reason:'共同习惯需审核',sourceIds:[feedback.id]}]}:{adjustments:[],suggestions:[]};
+        const content=JSON.stringify({entries:sourceIds.length?[{category:'support',kind:'fact',text:'用户希望先被倾听，再听建议。',sourceIds},{category:'personality',kind:'inference',text:'用户可能更重视被理解的过程。',sourceIds}]:[],questions:['最近有没有一件小事让你觉得被理解？'],companion});
+        if(payload.stream){
+          res.setHeader('Content-Type','text/event-stream');
+          res.write('data: '+JSON.stringify({choices:[{delta:{reasoning_content:'后台整理测试思考，不保存或展示正文'}}]})+'\n\n');
+          const timer=setTimeout(()=>res.end('data: '+JSON.stringify({choices:[{delta:{content},finish_reason:'stop'}]})+'\n\ndata: '+JSON.stringify({choices:[],usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45}})+'\n\ndata: [DONE]\n\n'),350);
+          res.on('close',()=>clearTimeout(timer));return;
+        }
         res.setHeader('Content-Type','application/json');
-        res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:JSON.stringify({entries:sourceIds.length?[{category:'support',kind:'fact',text:'用户希望先被倾听，再听建议。',sourceIds},{category:'personality',kind:'inference',text:'用户可能更重视被理解的过程。',sourceIds}]:[],questions:['最近有没有一件小事让你觉得被理解？'],companion})}}]}));return;
+        res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content}}]}));return;
       }
       if(payload.stream){
         res.setHeader('Content-Type','text/event-stream');
@@ -120,8 +127,10 @@ async function run(win,app){
     await waitFor(`!!document.querySelector('#generate-profile')`);
     await capture('08-profile-empty.png');
     await execute(`document.querySelector('#generate-profile').click()`);
+    await waitFor(`document.querySelector('#profile-job-status').textContent.includes('服务商正在思考')`);
     await waitFor(`!!document.querySelector('#profile-review')`);
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,0);assert.equal(snapshot.profile.draft.entries.length,2);assert.equal(snapshot.usage.byKind.profile.total,45);
+    assert(!JSON.stringify(snapshot.profile).includes('后台整理测试思考'));assert(!JSON.stringify(snapshot.persona).includes('后台整理测试思考'));
     const chatId=snapshot.conversations[0].id;
     let preview=await execute(`window.companion.call('preview',${JSON.stringify(chatId)},'你好')`);assert(!JSON.stringify(preview.messages).includes('用户可能更重视被理解的过程'));
     await execute(`document.querySelector('#profile-review').scrollIntoView({block:'start'})`);

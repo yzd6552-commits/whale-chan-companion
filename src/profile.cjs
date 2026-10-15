@@ -4,6 +4,7 @@ const categories=['daily','personality','story','family','people','support','val
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const stamp=()=>new Date().toISOString();
 function ensure(state){return state.profile ||= {current:[],questions:[],history:[],suppressed:[],lastInput:[],draft:null};}
+function recoverLegacyFailure(state){const p=ensure(state);if(!p.errorKind&&p.error==='画像整理未完成，原有画像保留。可手动重试。'){delete p.error;delete p.errorSignature;return true;}return false;}
 function sources(state){return state.memories.filter(m=>m.status==='confirmed').map(m=>({id:m.id,hash:hash([m.id,m.text,m.category,m.source,m.updatedAt]),text:m.text.slice(0,2000)+(m.text.length>2000?'\n（此条已截断，仅依据明确完整的信息，不推断缺失部分。）':''),category:m.category}));}
 function validEntry(entry,available){return entry.evidence?.length && entry.evidence.every(e=>available.get(e.id)?.hash===e.hash);}
 function basisKey(e){return hash(['basis',e.category,e.kind,e.evidence]);}
@@ -82,4 +83,4 @@ function context(state,query){
  return {entries,question};
 }
 function offered(state,id){const p=ensure(state);if(!p.questions.some(q=>q.id===id))return;p.lastQuestionTurn=state.conversations.reduce((n,c)=>n+c.messages.filter(m=>m.role==='user').length,0);p.lastQuestionAt=stamp();p.questionIndex=(p.questionIndex||0)+1;}
-module.exports={ensure,sources,sync,input,signature,due,userDue,automaticEnabled,hasInput,workFlags,propose,approve,reject,remove,context,offered,entryKey};
+module.exports={ensure,recoverLegacyFailure,sources,sync,input,signature,due,userDue,automaticEnabled,hasInput,workFlags,propose,approve,reject,remove,context,offered,entryKey};

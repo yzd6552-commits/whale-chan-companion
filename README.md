@@ -6,7 +6,7 @@
 
 ![鲸鱼娘 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.9) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.10) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
@@ -16,9 +16,9 @@ v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、
 
 | 设备 | 安装包 | 安装方式 |
 | --- | --- | --- |
-| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.9-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Mac，Intel 芯片 | `WhaleChan-0.1.9-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.9-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
+| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.10-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Mac，Intel 芯片 | `WhaleChan-0.1.10-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.10-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
 
 在 Mac 的“关于本机”查看芯片。Windows 版本为 x64，未提供 Windows ARM64 或 32 位版本。各版数据分别保存在所在设备，不会自动互通。源码仓库不包含编译好的应用；安装包作为 Release 附件提供。
 
@@ -100,6 +100,8 @@ token 用量直接读取 API 的 usage：每条回复显示输入、输出和总
 ![关于鲸鱼娘：人格成长与相处反馈](docs/persona.png)
 
 “关于鲸鱼娘”展示它的稳定底色、六项表达习惯和已确认的相处特点。它根据已确认记忆、已审核画像和你在此处填写的明确反馈，在空闲时与画像共用一次总结调用；不在每句话结束时追加请求。暂停用户画像和暂停人格成长分别控制，手动生成仍可使用。
+
+v0.1.10 起整理使用流式接收，最长等待 5 分钟，界面显示处理阶段。网络、接口状态、格式和超时会分别提示；失败后保留原有结果，需手动重试或有新依据后再整理，不会持续重复付费请求。聊天仍有优先权，开始聊天会暂停正在进行的整理。
 
 默认每次最多自动调整两项表达习惯，每项只移动一级，且限制在你允许的范围内。较大变化、性格特点、称呼、关系表达和共同习惯先审核；你可以编辑或否定建议。它始终保持温柔、好奇、坦率和独立判断，知道自己是 AI，不编造共同经历。
 
