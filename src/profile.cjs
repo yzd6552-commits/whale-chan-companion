@@ -1,4 +1,5 @@
 const crypto=require('node:crypto');
+const persona=require('./persona.cjs');
 const categories=['daily','personality','story','family','people','support','values','together'];
 const hash=value=>crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const stamp=()=>new Date().toISOString();
@@ -8,6 +9,7 @@ function validEntry(entry,available){return entry.evidence?.length && entry.evid
 function basisKey(e){return hash(['basis',e.category,e.kind,e.evidence]);}
 function entryKey(e){return hash([e.category,e.kind,e.text,e.evidence]);}
 function sync(state){
+ persona.sync(state,sources(state));
  const p=ensure(state),available=new Map(sources(state).map(m=>[m.id,m]));
  p.current=p.current.filter(e=>validEntry(e,available));
  if(p.questionInput?.some(e=>available.get(e.id)?.hash!==e.hash))p.questions=[];
@@ -18,17 +20,22 @@ function sync(state){
 function input(state){
  const p=sync(state),all=sources(state),important=new Set(p.current.flatMap(e=>e.evidence.map(x=>x.id)));
  const selected=[...all.filter(m=>important.has(m.id)),...all.filter(m=>!important.has(m.id)).reverse()].slice(0,60).sort((a,b)=>a.id.localeCompare(b.id));
- return {memories:selected,understanding:p.current.map(e=>({category:e.category,text:e.text,kind:e.kind,sourceIds:e.evidence.map(x=>x.id)}))};
+ return {memories:selected,companion:persona.input(state,sources(state)),understanding:p.current.map(e=>({category:e.category,text:e.text,kind:e.kind,sourceIds:e.evidence.map(x=>x.id)}))};
 }
-function signature(state){const p=ensure(state);return hash([sources(state).map(m=>[m.id,m.hash]).sort(),p.current,p.suppressed]);}
-function due(state){
+function signature(state){const p=ensure(state);return hash([sources(state).map(m=>[m.id,m.hash]).sort(),p.current,p.suppressed,state.settings.autoProfile!==false,persona.signature(state)]);}
+function userDue(state){
  const p=sync(state);if(p.error&&p.errorSignature&&p.errorSignature!==signature(state)){delete p.error;delete p.errorSignature;}if(state.settings.autoProfile===false||p.draft||p.error)return false;
  const all=sources(state);if(!all.length)return false;
  if(!p.lastGeneratedAt)return true;
  const previous=new Map(p.lastInput.map(e=>[e.id,e.hash]));
  return all.filter(m=>previous.get(m.id)!==m.hash).length>=5;
 }
+function due(state){const p=ensure(state);if(p.error&&p.errorSignature===signature(state))return false;return userDue(state)||persona.due(state,sources(state));}
+function automaticEnabled(state){return state.settings.autoProfile!==false||persona.ensure(state).enabled;}
+function hasInput(state){return sources(state).length>0||persona.ensure(state).feedback.length>0;}
+function workFlags(state,automatic,scope='both'){return {updateUserProfile:scope!=='persona'&&!ensure(state).draft&&(!automatic||userDue(state)),updateCompanion:(!automatic&&scope==='persona')||persona.ensure(state).enabled&&(!automatic||persona.due(state,sources(state))),manualCompanion:!automatic&&scope==='persona'};}
 function propose(state,result,requestInput){
+ if(requestInput.updateUserProfile===false){if(requestInput.updateCompanion!==false)persona.process(state,result?.companion,requestInput,sources(state));return ensure(state).draft;}
  if(!Array.isArray(result?.entries))throw Error('画像内容格式不正确，请重试。');
  const p=sync(state),available=new Map(requestInput.memories.map(m=>[m.id,m]));
  const seen=new Set(),entries=[];let grounded=0;
@@ -47,6 +54,7 @@ function propose(state,result,requestInput){
  const questions=(Array.isArray(result.questions)?result.questions:[]).slice(0,3).filter(q=>typeof q==='string'&&q.trim()).map(text=>({id:crypto.randomUUID(),text:text.trim().slice(0,180)}));
  p.lastInput=sources(state).map(m=>({id:m.id,hash:m.hash}));p.lastGeneratedAt=stamp();delete p.error;
  p.draft={id:crypto.randomUUID(),generatedAt:stamp(),entries,questions,input:requestInput.memories.map(m=>({id:m.id,hash:m.hash}))};
+ if(requestInput.updateCompanion!==false)persona.process(state,result?.companion,requestInput,sources(state));
  return p.draft;
 }
 function approve(state,draftId,items,questionIds){
@@ -74,4 +82,4 @@ function context(state,query){
  return {entries,question};
 }
 function offered(state,id){const p=ensure(state);if(!p.questions.some(q=>q.id===id))return;p.lastQuestionTurn=state.conversations.reduce((n,c)=>n+c.messages.filter(m=>m.role==='user').length,0);p.lastQuestionAt=stamp();p.questionIndex=(p.questionIndex||0)+1;}
-module.exports={ensure,sources,sync,input,signature,due,propose,approve,reject,remove,context,offered,entryKey};
+module.exports={ensure,sources,sync,input,signature,due,userDue,automaticEnabled,hasInput,workFlags,propose,approve,reject,remove,context,offered,entryKey};

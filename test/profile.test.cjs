@@ -20,9 +20,9 @@ test('approval detects stale drafts; rejection and deletion do not silently appl
  s.profile.suppressed=[];accept(s,generate(s));const id=s.profile.current[0].id;p.remove(s,id);assert.equal(s.profile.current.length,0);assert.equal(generate(s).entries.length,0);
 });
 test('auto profile is initial then after five additions, never while a draft waits',()=>{
- const s=fixture();assert(p.due(s));accept(s,generate(s));assert(!p.due(s));
- for(let i=0;i<4;i++)s.memories.push({id:'new'+i,text:'新记忆'+i,category:'daily',status:'confirmed'});assert(!p.due(s));s.memories.push({id:'fifth',text:'第五条',category:'daily',status:'confirmed'});assert(p.due(s));generate(s);assert(!p.due(s));
- s.settings.autoProfile=false;s.profile.draft=null;assert(!p.due(s));
+ const s=fixture();assert(p.userDue(s));accept(s,generate(s));assert(!p.userDue(s));
+ for(let i=0;i<4;i++)s.memories.push({id:'new'+i,text:'新记忆'+i,category:'daily',status:'confirmed'});assert(!p.userDue(s));s.memories.push({id:'fifth',text:'第五条',category:'daily',status:'confirmed'});assert(p.userDue(s));generate(s);assert(!p.userDue(s));
+ s.settings.autoProfile=false;s.profile.draft=null;assert(!p.userDue(s));
 });
 test('optional followups have turn and time cooldown, and question drafts never leak',()=>{
  const s=fixture();generate(s);s.conversations=[{messages:Array.from({length:10},()=>({role:'user',content:'聊天'}))}];assert.equal(p.context(s,'聊聊').question,null);accept(s,s.profile.draft);const q=p.context(s,'聊聊').question;assert(q);p.offered(s,q.id);assert.equal(p.context(s,'聊聊').question,null);

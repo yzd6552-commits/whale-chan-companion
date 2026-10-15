@@ -42,9 +42,11 @@ async function run(win,app){
       if(fail){res.writeHead(401);res.end(JSON.stringify({error:'never surface test-key'}));return;}
       const extract=payload.messages[0].content.includes('最多3条');
       if(payload.messages[0].content.includes('PROFILE_SUMMARY')){
-        const input=JSON.parse(payload.messages[1].content);assert.equal(input.memories.length,1);assert(!JSON.stringify(input).includes('用户表示喜欢散步'));
-        const sourceIds=[input.memories[0].id];res.setHeader('Content-Type','application/json');
-        res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:JSON.stringify({entries:[{category:'support',kind:'fact',text:'用户希望先被倾听，再听建议。',sourceIds},{category:'personality',kind:'inference',text:'用户可能更重视被理解的过程。',sourceIds}],questions:['最近有没有一件小事让你觉得被理解？']})}}]}));return;
+        const input=JSON.parse(payload.messages[1].content);assert(input.memories.length<=1);assert(!JSON.stringify(input).includes('用户表示喜欢散步'));
+        const sourceIds=input.memories.length?[input.memories[0].id]:[],feedback=input.companion?.feedback?.at(-1);
+        const companion=feedback?{adjustments:[{dimension:'humor',value:2,reason:'明确的相处反馈',sourceIds:[feedback.id]},{dimension:'length',value:0,reason:'明显的表达变化先审核',sourceIds:[feedback.id]}],suggestions:[{kind:'address',text:'称呼待确认测试',reason:'称呼需审核',sourceIds:[feedback.id]},{kind:'habit',text:'共同玩笑待确认测试',reason:'共同习惯需审核',sourceIds:[feedback.id]}]}:{adjustments:[],suggestions:[]};
+        res.setHeader('Content-Type','application/json');
+        res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:JSON.stringify({entries:sourceIds.length?[{category:'support',kind:'fact',text:'用户希望先被倾听，再听建议。',sourceIds},{category:'personality',kind:'inference',text:'用户可能更重视被理解的过程。',sourceIds}]:[],questions:['最近有没有一件小事让你觉得被理解？'],companion})}}]}));return;
       }
       if(payload.stream){
         res.setHeader('Content-Type','text/event-stream');
@@ -145,6 +147,36 @@ async function run(win,app){
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,1);assert.equal(snapshot.settings.autoProfile,false);
     await execute(`window.companion.call('memory-delete',${JSON.stringify(snapshot.memories[0].id)})`);
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,0);assert(snapshot.profile.history.every(v=>v.entries.length===0));
+    await execute(`document.querySelector('[data-page="persona"]').click()`);await waitFor(`!!document.querySelector('#persona-grow')`);
+    await capture('11-persona-baseline.png');
+    const callsBeforeFeedback=requests.length;
+    await execute(`document.querySelector('#persona-feedback-text').value='我喜欢一点幽默，回答更简短，称呼和玩笑先确认。';document.querySelector('#save-persona-feedback').click()`);
+    await waitFor(`window.companion.call('state').then(s=>s.persona.feedback.length===1)`);assert.equal(requests.length,callsBeforeFeedback);
+    await execute(`document.querySelector('#persona-grow').click()`);
+    await waitFor(`window.companion.call('state').then(s=>s.persona.pending.length===3&&!s.profileBusy)`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.persona.styles.humor.value,2);assert.equal(snapshot.persona.styles.length.value,2);assert.equal(snapshot.profile.draft,null);assert.equal(requests.length,callsBeforeFeedback+1);
+    preview=await execute(`window.companion.call('preview',${JSON.stringify(chatId)},'你好')`);assert(!JSON.stringify(preview.messages).includes('称呼待确认测试'));assert(!JSON.stringify(preview.messages).includes('共同玩笑待确认测试'));
+    const nickname=snapshot.persona.pending.find(e=>e.kind==='address'),habit=snapshot.persona.pending.find(e=>e.kind==='habit'),length=snapshot.persona.pending.find(e=>e.dimension==='length'),oldVersion=snapshot.persona.history.at(-1).id;
+    await execute(`document.querySelector('#persona-review').scrollIntoView({block:'start'})`);await capture('12-persona-review.png');
+    await execute(`document.querySelector('[data-persona-proposal-text="${nickname.id}"]').value='称呼审核独有标记';document.querySelector('[data-persona-approve="${nickname.id}"]').click()`);
+    await waitFor(`window.companion.call('state').then(s=>s.persona.rules.length===1)`);
+    preview=await execute(`window.companion.call('preview',${JSON.stringify(chatId)},'你好')`);assert(JSON.stringify(preview.messages).includes('称呼审核独有标记'));
+    await execute(`document.querySelector('[data-persona-reject="${habit.id}"]').click()`);await waitFor(`!document.querySelector('[data-persona-reject="${habit.id}"]')`);
+    await execute(`document.querySelector('[data-persona-approve="${length.id}"]').click()`);await waitFor(`window.companion.call('state').then(s=>s.persona.styles.length.value===0)`);
+    await execute(`document.querySelector('[data-persona-rule-lock]').click()`);await waitFor(`window.companion.call('state').then(s=>s.persona.rules[0].locked)`);
+    await execute(`document.querySelector('[data-persona-lock="humor"]').checked=true;document.querySelector('#persona-settings').requestSubmit()`);
+    await waitFor(`window.companion.call('state').then(s=>s.persona.locks.humor)`);
+    await execute(`document.querySelector('.persona-history').open=true;document.querySelector('[data-persona-restore="${oldVersion}"]').click()`);
+    await waitFor(`window.companion.call('state').then(s=>s.persona.styles.length.value===2)`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.persona.styles.humor.value,2);assert.equal(snapshot.persona.rules.length,1);assert(snapshot.persona.rules[0].locked);
+    await execute(`document.querySelector('#persona-feedback-text').value='尚未提交的反馈草稿';document.querySelector('#persona-feedback-text').dispatchEvent(new Event('input'));document.querySelector('#persona-enabled').click()`);
+    await waitFor(`window.companion.call('state').then(s=>!s.persona.enabled)`);assert.equal(await execute(`document.querySelector('#persona-feedback-text').value`),'尚未提交的反馈草稿');
+    await execute(`document.querySelector('#persona-grow').click()`);await waitFor(`window.companion.call('state').then(s=>s.persona.pending.length===1&&!s.profileBusy)`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.usage.byKind.profile.total,180);assert.equal(snapshot.persona.styles.humor.value,2);
+    const feedbackId=snapshot.persona.feedback[0].id;
+    await execute(`document.querySelector('[data-persona-feedback-delete="${feedbackId}"]').click()`);await waitFor(`window.companion.call('state').then(s=>s.persona.rules.length===0&&s.persona.pending.length===0)`);
+    await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);snapshot=await execute(`window.companion.call('state')`);assert(snapshot.persona.locks.humor);assert.equal(snapshot.persona.styles.humor.value,2);assert.equal(snapshot.persona.enabled,false);
+    console.log('PERSONA SMOKE PASS: feedback batching, bounded automatic learning, major review, prompt isolation, rejection, locks, protected restore, draft preservation, manual growth while paused, evidence revocation and reload.');
     console.log('PROFILE SMOKE PASS: generation, review, prompt isolation, edit, deletion, manual generation while paused, rejection, history, revocation and persistence.');
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);

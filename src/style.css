@@ -188,3 +188,9 @@ dialog .memory-edit{min-height:150px;resize:vertical;line-height:1.8;margin-bott
 
 .profile-page .panel > .actions { margin:16px 0 20px; }
 .profile-card > .actions { margin-top:16px; }
+.persona-range { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.persona-proposal { margin:16px 0; }
+.persona-feedback { gap:16px; border-bottom:1px solid #e5ebfa; }
+.persona-feedback p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.persona-history summary { cursor:pointer; }
+.persona-history-item { padding:18px 0; border-bottom:1px solid #e5ebfa; }

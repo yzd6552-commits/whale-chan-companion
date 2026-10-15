@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const profile=require('./profile.cjs');
+const persona=require('./persona.cjs');
 const sections = require('./questions.js');
 const questions = sections.flatMap(s => s.questions);
 const categories = new Set(sections.map(s => s.id));
@@ -51,7 +52,7 @@ function payload(state, conversation, text) {
   const understanding=profile.context(state,text);
   const portrait=understanding.entries.length?'\n以下是本人审核的可修正理解。推测仍然是推测，不是人格定论，不要生硬引用或替用户下诊断。自然调整语气和建议方式：\n'+understanding.entries.map(e=>`[${e.kind==='fact'?'明确自述':'暂时推测'}] ${e.text}`).join('\n'):'';
   const followup=understanding.question?'\n若与当前话题自然相关，可以温和地问以下一个问题；不合适就不问，不连续追问：'+understanding.question.text:'';
-  return { memories, profileQuestion:understanding.question?.id, messages: [{role: 'system', content: system + portrait + followup + (memoryText ? '\n\n以下为用户确认的记忆：\n<user_memory>\n' + memoryText + '\n</user_memory>' : '\n目前没有已确认的个人记忆，请通过对话慢慢认识用户。')}, ...history, {role: 'user', content: text}] };
+  return { memories, profileQuestion:understanding.question?.id, messages: [{role: 'system', content: system + persona.context(state,profile.sources(state)) + portrait + followup + (memoryText ? '\n\n以下为用户确认的记忆：\n<user_memory>\n' + memoryText + '\n</user_memory>' : '\n目前没有已确认的个人记忆，请通过对话慢慢认识用户。')}, ...history, {role: 'user', content: text}] };
 }
 function addCandidates(state, candidates, conversationId) {
   if (!Array.isArray(candidates)) return;
