@@ -19,10 +19,10 @@ input,textarea,select{color:var(--ink)}
 .nav-item i{font-style:normal;font-size:10px;margin-left:auto}
 .conversation-heading{margin:34px 12px 12px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#9aa9c5}
 .conversation-heading button{font-size:20px}
-.conversation-list{overflow:auto;flex:1}
+.conversation-list{overflow:auto;flex:1;min-height:0;overscroll-behavior:contain}
 .conversation-row{display:flex;align-items:center;border-radius:7px;margin-bottom:4px}
 .conversation-row.selected{background:#e4edff}
-.conversation-row .choose-conv{font-size:12px;text-align:left;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:11px}
+.conversation-row .choose-conv{font-size:12px;text-align:left;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:11px}
 .conversation-row .remove-conv{opacity:0;padding:8px;font-size:13px;color:var(--muted)}
 .conversation-row:hover .remove-conv,.conversation-row:focus-within .remove-conv{opacity:1}
 .empty-small{padding:10px 12px;line-height:1.8;color:#95a5c3;font-size:11px}
