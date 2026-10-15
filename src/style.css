@@ -165,3 +165,9 @@ dialog .memory-edit{min-height:150px;resize:vertical;line-height:1.8;margin-bott
 .usage-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: right; margin: 16px 0; }
 .usage-table th, .usage-table td { padding: 8px 4px; border-bottom: 1px solid #e7ecfa; }
 .usage-table th:first-child, .usage-table td:first-child { text-align: left; }
+
+.chat-options { display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-end; }
+.reasoning-panel { margin:8px 0 18px; padding:12px 16px; border:1px solid #dce5fa; border-radius:14px; background:#f6f8ff; color:#687da7; font-size:13px; }
+.reasoning-panel summary { cursor:pointer; font-weight:600; }
+.reasoning-content { white-space:pre-wrap; overflow-wrap:anywhere; max-height:260px; overflow:auto; line-height:1.8; margin:12px 0; }
+.message-content:empty { display:none; }

@@ -8,3 +8,7 @@ test('explicit opt-out restores provider defaults; other providers receive no ve
  for(const settings of [{model:'deepseek-flash',fastReply:false},{model:'another-model',fastReply:true}])assert(!('thinking' in completionBody(settings,[])));
  const body=completionBody({model:'deepseek-flash'},[],{json:true});assert.equal(body.stream,false);assert.equal(body.temperature,0.1);assert(!body.stream_options);
 });
+test('deep thinking can be explicitly enabled without conflicting fast flags',()=>{
+ assert.deepEqual(completionBody({model:'deepseek-v4.1-flash',deepThinking:true,fastReply:true},[]).thinking,{type:'enabled'});
+ assert(!completionBody({model:'another-model',deepThinking:true},[]).thinking);
+});

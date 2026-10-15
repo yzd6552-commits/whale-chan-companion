@@ -2,12 +2,14 @@
 async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{}) {
   if (!response.headers.get('content-type')?.includes('text/event-stream')) {
     const result=await response.json();onUsage(result.usage);
+    const reasoning=result.choices?.[0]?.message?.reasoning_content;
+    if(typeof reasoning==='string'&&reasoning)onReasoning(reasoning.slice(0,100000));
     const answer=result.choices?.[0]?.message?.content;
     if (typeof answer!=='string'||!answer.trim()) throw Error('模型没有返回文本回复。');
     const text=answer.slice(0,100000);onText(text);return text;
   }
   const reader=response.body.getReader(), decoder=new TextDecoder();
-  let buffer='',answer='',ended=false,finished=false,reasoningNotified=false;
+  let buffer='',answer='',ended=false,finished=false,reasoningLength=0;
   function event(raw) {
     const data=raw.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');
     if(!data)return;
@@ -17,7 +19,8 @@ async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{
     if(packet.usage)onUsage(packet.usage);
     const choice=packet.choices?.[0];
     if(choice?.finish_reason!=null)finished=true;
-    if(choice?.delta?.reasoning_content&&!reasoningNotified){reasoningNotified=true;onReasoning();}
+    const reasoning=choice?.delta?.reasoning_content;
+    if(typeof reasoning==='string'&&reasoning&&reasoningLength<100000){const piece=reasoning.slice(0,100000-reasoningLength);reasoningLength+=piece.length;onReasoning(piece);}
     const text=choice?.delta?.content;
     if(typeof text==='string'&&text){
       if(answer.length+text.length>100000)throw Error('回复过长，已保留收到的内容。');

@@ -62,3 +62,7 @@ test('missing primary file recovers existing backup instead of starting empty',(
   try{const store=new Store(dir),s=store.load();s.answers.test={text:'saved'};store.save(s);store.save(s);fs.unlinkSync(store.file);const next=new Store(dir);assert.equal(next.load().answers.test.text,'saved');assert(next.recovered);}
   finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+test('stored provider reasoning never enters subsequent chat prompts',()=>{
+ const s=core.initialState();const c={messages:[{role:'assistant',content:'这是正式回复',reasoning:'仅供本机显示的思考文字'}]};
+ const built=core.payload(s,c,'继续聊');assert(!JSON.stringify(built).includes('仅供本机显示的思考文字'));assert(JSON.stringify(built).includes('这是正式回复'));
+});

@@ -36,12 +36,12 @@ function publicState() { return {...structuredClone(state), hasKey:hasKey(), dat
 function persist() { store.save(state); win?.webContents.send('state-changed',publicState()); }
 function conv(cid) { const c = state.conversations.find(c => c.id === cid); if (!c) throw new Error('找不到这段对话。'); return c; }
 function guard() { if (busy) throw new Error('请先停止当前回复，再进行此操作。'); }
-async function completion(messages, signal, json = false, onText, onUsage, kind='chat') {
+async function completion(messages, signal, json = false, onText, onUsage, kind='chat', onReasoning) {
   const started=performance.now(),timing={};
   const base = core.validateEndpoint(state.settings.baseUrl);
   const key = readKey();
   if (!key || !state.settings.model.trim()) throw new Error('请先在“连接与设置”填写模型、API 地址和密钥。');
-  const requestState=state;let reportedUsage;
+  const requestState=state;let reportedUsage,reasoningStarted=false;
   try {
   timing.requestStartMs=Math.round(performance.now()-started);
   if(onText)win.webContents.send('generation-stage','已发送，等待模型回复…');
@@ -57,7 +57,7 @@ async function completion(messages, signal, json = false, onText, onUsage, kind=
     const detail = response.status === 401 ? '密钥无效或没有访问权限。' : response.status === 429 ? '请求过于频繁或账户额度不足。' : response.status === 404 ? '请检查 Base URL 和模型名称。' : '请检查服务商状态与配置。';
     throw new Error(`API 返回 ${response.status}：${detail}`);
   }
-  if (onText) return await readChatStream(response,text=>{timing.firstTextMs??=Math.round(performance.now()-started);onText(text);},usage=>{reportedUsage=usage;},()=>win.webContents.send('generation-stage','模型正在思考，尚未开始回复…'));
+  if (onText) return await readChatStream(response,text=>{timing.firstTextMs??=Math.round(performance.now()-started);onText(text);},usage=>{reportedUsage=usage;},text=>{timing.firstReasoningMs??=Math.round(performance.now()-started);onReasoning?.(text);if(!reasoningStarted){reasoningStarted=true;win.webContents.send('generation-stage','模型正在思考…');}});
   const result = await response.json();reportedUsage=result.usage;
   const answer = result.choices?.[0]?.message?.content;
   if (typeof answer !== 'string' || !answer.trim()) throw new Error('模型没有返回文本回复。请检查模型是否兼容聊天接口。');
@@ -110,14 +110,14 @@ function setupHandlers() {
     if (c.messages.length === 1) c.title = text.slice(0,22);
     persist();
     let reply, lastSave=0;
+    const ensureReply=()=>{if(!reply){reply={id:core.id(),role:'assistant',content:'',partial:true,createdAt:core.now()};c.messages.push(reply);}return reply;};
+    const publishReply=()=>{win.webContents.send('chat-stream',{cid,id:reply.id,content:reply.content,reasoning:reply.reasoning||'',createdAt:reply.createdAt});if(Date.now()-lastSave>=1000){store.save(state);lastSave=Date.now();}};
     try {
       const content = await completion(built.messages,signal,false,delta=>{
-        if (!reply) {reply={id:core.id(),role:'assistant',content:'',partial:true,createdAt:core.now()};c.messages.push(reply);}
-        reply.content+=delta;
-        win.webContents.send('chat-stream',{cid,id:reply.id,content:reply.content,createdAt:reply.createdAt});
-        if(Date.now()-lastSave>=1000){store.save(state);lastSave=Date.now();}
-      },(usage,timing)=>{if(reply){reply.usage=usage;reply.usageStatus=usage?'reported':'unreported';reply.timing=timing;}});
+        ensureReply().content+=delta;publishReply();
+      },(usage,timing)=>{if(reply){reply.usage=usage;reply.usageStatus=usage?'reported':'unreported';reply.timing=timing;}},'chat',text=>{const m=ensureReply();m.reasoning=(m.reasoning||'')+text;publishReply();});
       delete reply.partial;
+      if(state.settings.deepThinking&&!reply.reasoning)reply.reasoningUnavailable=true;
       memoryWorker.enqueue(c,text,content);persist();
       return result;
     } catch(e) {
@@ -139,7 +139,7 @@ function setupHandlers() {
       if (!safeStorage.isEncryptionAvailable()) throw new Error('系统密钥加密不可用，无法保存 API 密钥。');
       fs.writeFileSync(keyPath(),safeStorage.encryptString(key),{mode:0o600});
     } else if (changed && hasKey()) fs.unlinkSync(keyPath());
-    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory,fastReply:data.fastReply!==false};
+    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory,fastReply:data.fastReply!==false,deepThinking:data.deepThinking===true};
     if (!data.extractMemory) for(const c of state.conversations){c.memoryQueue=[];delete c.memoryError;}
     persist();memoryWorker.schedule(); return publicState();
   });

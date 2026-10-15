@@ -45,10 +45,11 @@ async function run(win,app){
         res.setHeader('Content-Type','text/event-stream');
         const chunk=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\n\n';
         res.flushHeaders();
-        const firstTimer=setTimeout(()=>res.write(chunk('我在听。')),300);
+        if(payload.thinking?.type==='enabled')res.write('data: '+JSON.stringify({choices:[{delta:{reasoning_content:'测试服务返回的思考文字：先理解用户的感受，再给出回复。'}}]})+'\n\n');
+        const firstTimer=setTimeout(()=>res.write(chunk('我在听。')),payload.thinking?.type==='enabled'?1000:300);
         res.on('close',()=>clearTimeout(firstTimer));
         if(slow)return; // cancellation after partial text
-        const timer=setTimeout(()=>res.end(chunk('你愿意从今天发生的事开始说吗？')+'data: '+JSON.stringify({choices:[],usage:{prompt_tokens:100,completion_tokens:20,total_tokens:120}})+'\n\ndata: [DONE]\n\n'),1200);
+        const timer=setTimeout(()=>res.end(chunk('你愿意从今天发生的事开始说吗？')+'data: '+JSON.stringify({choices:[],usage:{prompt_tokens:100,completion_tokens:20,total_tokens:120}})+'\n\ndata: [DONE]\n\n'),payload.thinking?.type==='enabled'?2200:1200);
         res.on('close',()=>clearTimeout(timer));return;
       }
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:extract?JSON.stringify({memories:[{text:'用户表示喜欢散步',category:'daily'}]}):'我在听。你愿意从今天发生的事开始说吗？'}}]}));
@@ -81,9 +82,14 @@ async function run(win,app){
     await capture('05-chat-test-service.png');
     await execute(`document.querySelector('#remember-chat').click()`);
     await waitFor(`!document.querySelector('#remember-chat').checked`);
+    await execute(`document.querySelector('#thinking-mode').click()`);
+    await waitFor(`document.querySelector('#thinking-mode').checked`);
     await execute(`document.querySelector('#message-input').value='这一句不要整理记忆。';document.querySelector('#send-message').click()`);
+    await waitFor(`!!document.querySelector('.reasoning-content')&&document.querySelector('#send-message').textContent==='停止生成'`);
+    await capture('07-deep-thinking.png');
     await waitFor(`document.querySelectorAll('.message.assistant').length===2&&document.querySelector('#send-message').textContent==='发送 ↑'`);
-    assert.equal(requests.length,3);
+    assert.equal(requests.length,3);assert.equal(requests[2].thinking.type,'enabled');
+    snapshot=await execute(`window.companion.call('state')`);assert(snapshot.conversations.some(c=>c.messages.some(m=>m.reasoning?.includes('测试服务返回的思考文字'))));
     fail=true;
     await execute(`document.querySelector('#message-input').value='测试错误';document.querySelector('#send-message').click()`);
     await waitFor(`!!document.querySelector('.error-box')`);
