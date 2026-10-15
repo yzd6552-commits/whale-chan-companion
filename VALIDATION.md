@@ -6,6 +6,8 @@
 
 包含侧栏精简的最终 Intel Mac 安装包通过完整桌面流程测试及临时签名校验；已安装到本机。安装前后 11 个本地文件摘要一致，聊天、记忆和加密密钥保持不变，旧安装与构建副本移入废纸篓。侧栏移除底部装饰大图，压缩导航留白，会话列表独立滚动；已截图核对普通窗口与 900×650 小窗口。
 
+最终跨平台工作流 [38714108133](https://github.com/yzd6552-commits/whale-chan-companion/actions/runs/38714108133) 全部成功：Intel Mac、Apple Silicon Mac、Windows x64 各完成 49 项单元测试、源码桌面流程、原生构建和打包应用桌面流程；两个 Mac DMG 均通过校验。先前构建因加入侧栏调整而取消，未用于发布。
+
 ## v0.1.3 原生跨平台验证
 
 - 成功工作流：https://github.com/yzd6552-commits/whale-chan-companion/actions/runs/38594433756
