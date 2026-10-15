@@ -2,8 +2,8 @@ const core = require('./core.cjs');
 
 // Keeps queued turns on disk until extraction succeeds. Chat always has priority.
 class MemoryWorker {
-  constructor({getState, extract, save, chatBusy, batchDelay=15000, idleDelay=120000, requestTimeout=90000}) {
-    Object.assign(this,{getState,extract,save,chatBusy,batchDelay,idleDelay,requestTimeout});
+  constructor({getState, extract, save, chatBusy, batchDelay=15000, idleDelay=120000, requestTimeout=90000,onIdle=()=>{}}) {
+    Object.assign(this,{getState,extract,save,chatBusy,batchDelay,idleDelay,requestTimeout,onIdle});
     this.active=null; this.timer=null; this.closed=false;
   }
   enqueue(conversation, userMessage, assistantReply) {
@@ -50,7 +50,7 @@ class MemoryWorker {
       clearTimeout(timeout);
       if (timedOut && !this.closed && this.getState()===state && state.conversations.includes(c) && c.remember && state.settings.extractMemory) {c.memoryError=true;this.save();}
       if (this.active===job) this.active=null;
-      this.schedule();
+      this.schedule();this.onIdle();
     }
   }
   close() {this.closed=true;this.pause();}

@@ -1,4 +1,4 @@
-const kinds=['chat','memory','connection'];
+const kinds=['chat','memory','connection','profile'];
 function normalizeUsage(raw) {
   const valid=n=>Number.isSafeInteger(n)&&n>=0&&n<=1000000000;
   if(!raw||!valid(raw.prompt_tokens)||!valid(raw.completion_tokens))return null;

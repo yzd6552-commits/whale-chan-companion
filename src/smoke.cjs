@@ -41,6 +41,11 @@ async function run(win,app){
       const payload=JSON.parse(body);requests.push(payload);
       if(fail){res.writeHead(401);res.end(JSON.stringify({error:'never surface test-key'}));return;}
       const extract=payload.messages[0].content.includes('最多3条');
+      if(payload.messages[0].content.includes('PROFILE_SUMMARY')){
+        const input=JSON.parse(payload.messages[1].content);assert.equal(input.memories.length,1);assert(!JSON.stringify(input).includes('用户表示喜欢散步'));
+        const sourceIds=[input.memories[0].id];res.setHeader('Content-Type','application/json');
+        res.end(JSON.stringify({usage:{prompt_tokens:40,completion_tokens:5,total_tokens:45},choices:[{message:{content:JSON.stringify({entries:[{category:'support',kind:'fact',text:'用户希望先被倾听，再听建议。',sourceIds},{category:'personality',kind:'inference',text:'用户可能更重视被理解的过程。',sourceIds}],questions:['最近有没有一件小事让你觉得被理解？']})}}]}));return;
+      }
       if(payload.stream){
         res.setHeader('Content-Type','text/event-stream');
         const chunk=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\n\n';
@@ -108,6 +113,39 @@ async function run(win,app){
     assert((await execute(`document.querySelector('#usage-panel').textContent`)).includes('285'));
     await execute(`document.querySelector('#usage-panel').scrollIntoView({block:'start'})`);
     await capture('06-token-usage.png');
+    fail=false;slow=false;
+    await execute(`document.querySelector('[data-page="profile"]').click()`);
+    await waitFor(`!!document.querySelector('#generate-profile')`);
+    await capture('08-profile-empty.png');
+    await execute(`document.querySelector('#generate-profile').click()`);
+    await waitFor(`!!document.querySelector('#profile-review')`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,0);assert.equal(snapshot.profile.draft.entries.length,2);assert.equal(snapshot.usage.byKind.profile.total,45);
+    const chatId=snapshot.conversations[0].id;
+    let preview=await execute(`window.companion.call('preview',${JSON.stringify(chatId)},'你好')`);assert(!JSON.stringify(preview.messages).includes('用户可能更重视被理解的过程'));
+    await execute(`document.querySelector('#profile-review').scrollIntoView({block:'start'})`);
+    await capture('09-profile-review.png');
+    await execute(`document.querySelectorAll('[data-profile-text]')[1].value='画像审核测试标记：用户可能更重视被理解的过程。';document.querySelector('#approve-profile').click()`);
+    await waitFor(`!document.querySelector('#profile-review')`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,2);
+    preview=await execute(`window.companion.call('preview',${JSON.stringify(chatId)},'你好')`);assert(JSON.stringify(preview.messages).includes('画像审核测试标记'));assert(JSON.stringify(preview.messages).includes('暂时推测'));
+    await capture('10-profile-approved.png');
+    await execute(`document.querySelector('[data-edit-profile]').click();document.querySelector('#correct-profile-text').value='用户希望先倾听后建议的陪伴方式。';document.querySelector('#save-profile-edit').click()`);
+    await waitFor(`!document.querySelector('#modal').open`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.history.length,1);
+    await execute(`document.querySelector('[data-remove-profile]').click()`);
+    await waitFor(`document.querySelectorAll('[data-profile-card]').length===1`);
+    await execute(`document.querySelector('#auto-profile-toggle').click()`);
+    await waitFor(`!document.querySelector('#auto-profile-toggle').checked`);
+    await execute(`document.querySelector('#generate-profile').click()`);
+    await waitFor(`!!document.querySelector('#reject-profile')`);
+    await execute(`document.querySelector('#reject-profile').click()`);
+    await waitFor(`!document.querySelector('#profile-review')`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,1);assert.equal(snapshot.settings.autoProfile,false);assert.equal(snapshot.usage.byKind.profile.total,90);
+    await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,1);assert.equal(snapshot.settings.autoProfile,false);
+    await execute(`window.companion.call('memory-delete',${JSON.stringify(snapshot.memories[0].id)})`);
+    snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.profile.current.length,0);assert(snapshot.profile.history.every(v=>v.entries.length===0));
+    console.log('PROFILE SMOKE PASS: generation, review, prompt isolation, edit, deletion, manual generation while paused, rejection, history, revocation and persistence.');
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);
   }catch(e){console.error('SMOKE FAIL',e);if(server){server.closeAllConnections();server.close();}app.exit(1);}
