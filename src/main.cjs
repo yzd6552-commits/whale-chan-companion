@@ -6,6 +6,7 @@ const core = require('./core.cjs');
 const {MemoryWorker} = require('./memory-worker.cjs');
 const {readChatStream} = require('./chat-stream.cjs');
 const {recordUsage,usageDay} = require('./usage.cjs');
+const {completionBody} = require('./request-options.cjs');
 let win, store, state, busy = false, controller, activeRequest;
 const memoryWorker = new MemoryWorker({... (process.argv.includes('--smoke-test') ? {idleDelay:1500,batchDelay:500} : {}),getState:()=>state,chatBusy:()=>busy,save:()=>persist(),extract:async (turns,signal)=>{
   const existing=state.memories.filter(m=>m.status==='confirmed').slice(-50).map(m=>m.text.slice(0,500)).join('\n');
@@ -36,28 +37,33 @@ function persist() { store.save(state); win?.webContents.send('state-changed',pu
 function conv(cid) { const c = state.conversations.find(c => c.id === cid); if (!c) throw new Error('找不到这段对话。'); return c; }
 function guard() { if (busy) throw new Error('请先停止当前回复，再进行此操作。'); }
 async function completion(messages, signal, json = false, onText, onUsage, kind='chat') {
+  const started=performance.now(),timing={};
   const base = core.validateEndpoint(state.settings.baseUrl);
   const key = readKey();
   if (!key || !state.settings.model.trim()) throw new Error('请先在“连接与设置”填写模型、API 地址和密钥。');
   const requestState=state;let reportedUsage;
   try {
+  timing.requestStartMs=Math.round(performance.now()-started);
+  if(onText)win.webContents.send('generation-stage','已发送，等待模型回复…');
   const response = await fetch(base + '/chat/completions', {
     method:'POST', redirect:'error', signal,
     headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + key},
-    body:JSON.stringify({model:state.settings.model, messages, stream:!!onText, ...(onText?{stream_options:{include_usage:true}}:{}), ...(json ? {temperature:0.1} : {})})
+    body:JSON.stringify(completionBody(state.settings,messages,{json,stream:!!onText}))
   });
+  timing.headersMs=Math.round(performance.now()-started);
+  if(onText)win.webContents.send('generation-stage','已连接，等待模型开始回复…');
   if (!response.ok) {
     // Do not surface response bodies: gateways may echo headers and secrets.
     const detail = response.status === 401 ? '密钥无效或没有访问权限。' : response.status === 429 ? '请求过于频繁或账户额度不足。' : response.status === 404 ? '请检查 Base URL 和模型名称。' : '请检查服务商状态与配置。';
     throw new Error(`API 返回 ${response.status}：${detail}`);
   }
-  if (onText) return await readChatStream(response,onText,usage=>{reportedUsage=usage;});
+  if (onText) return await readChatStream(response,text=>{timing.firstTextMs??=Math.round(performance.now()-started);onText(text);},usage=>{reportedUsage=usage;},()=>win.webContents.send('generation-stage','模型正在思考，尚未开始回复…'));
   const result = await response.json();reportedUsage=result.usage;
   const answer = result.choices?.[0]?.message?.content;
   if (typeof answer !== 'string' || !answer.trim()) throw new Error('模型没有返回文本回复。请检查模型是否兼容聊天接口。');
   return answer.slice(0,100000);
   } finally {
-    if(state===requestState){const usage=recordUsage(state,reportedUsage,kind);onUsage?.(usage);persist();}
+    if(state===requestState){const usage=recordUsage(state,reportedUsage,kind);timing.totalMs=Math.round(performance.now()-started);onUsage?.(usage,timing);persist();}
   }
 }
 function register(channel, fn) {
@@ -110,7 +116,7 @@ function setupHandlers() {
         reply.content+=delta;
         win.webContents.send('chat-stream',{cid,id:reply.id,content:reply.content,createdAt:reply.createdAt});
         if(Date.now()-lastSave>=1000){store.save(state);lastSave=Date.now();}
-      },usage=>{if(reply){reply.usage=usage;reply.usageStatus=usage?'reported':'unreported';}});
+      },(usage,timing)=>{if(reply){reply.usage=usage;reply.usageStatus=usage?'reported':'unreported';reply.timing=timing;}});
       delete reply.partial;
       memoryWorker.enqueue(c,text,content);persist();
       return result;
@@ -133,7 +139,7 @@ function setupHandlers() {
       if (!safeStorage.isEncryptionAvailable()) throw new Error('系统密钥加密不可用，无法保存 API 密钥。');
       fs.writeFileSync(keyPath(),safeStorage.encryptString(key),{mode:0o600});
     } else if (changed && hasKey()) fs.unlinkSync(keyPath());
-    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory};
+    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory,fastReply:data.fastReply!==false};
     if (!data.extractMemory) for(const c of state.conversations){c.memoryQueue=[];delete c.memoryError;}
     persist();memoryWorker.schedule(); return publicState();
   });

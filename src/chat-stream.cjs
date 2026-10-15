@@ -1,5 +1,5 @@
 // Decode data-only SSE without assuming network chunks align with events or UTF-8.
-async function readChatStream(response, onText, onUsage=()=>{}) {
+async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{}) {
   if (!response.headers.get('content-type')?.includes('text/event-stream')) {
     const result=await response.json();onUsage(result.usage);
     const answer=result.choices?.[0]?.message?.content;
@@ -7,7 +7,7 @@ async function readChatStream(response, onText, onUsage=()=>{}) {
     const text=answer.slice(0,100000);onText(text);return text;
   }
   const reader=response.body.getReader(), decoder=new TextDecoder();
-  let buffer='',answer='',ended=false,finished=false;
+  let buffer='',answer='',ended=false,finished=false,reasoningNotified=false;
   function event(raw) {
     const data=raw.split(/\r?\n/).filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trimStart()).join('\n');
     if(!data)return;
@@ -17,6 +17,7 @@ async function readChatStream(response, onText, onUsage=()=>{}) {
     if(packet.usage)onUsage(packet.usage);
     const choice=packet.choices?.[0];
     if(choice?.finish_reason!=null)finished=true;
+    if(choice?.delta?.reasoning_content&&!reasoningNotified){reasoningNotified=true;onReasoning();}
     const text=choice?.delta?.content;
     if(typeof text==='string'&&text){
       if(answer.length+text.length>100000)throw Error('回复过长，已保留收到的内容。');

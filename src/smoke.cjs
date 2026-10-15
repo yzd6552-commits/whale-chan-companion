@@ -44,7 +44,9 @@ async function run(win,app){
       if(payload.stream){
         res.setHeader('Content-Type','text/event-stream');
         const chunk=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\n\n';
-        res.write(chunk('我在听。'));
+        res.flushHeaders();
+        const firstTimer=setTimeout(()=>res.write(chunk('我在听。')),300);
+        res.on('close',()=>clearTimeout(firstTimer));
         if(slow)return; // cancellation after partial text
         const timer=setTimeout(()=>res.end(chunk('你愿意从今天发生的事开始说吗？')+'data: '+JSON.stringify({choices:[],usage:{prompt_tokens:100,completion_tokens:20,total_tokens:120}})+'\n\ndata: [DONE]\n\n'),1200);
         res.on('close',()=>clearTimeout(timer));return;
@@ -56,14 +58,15 @@ async function run(win,app){
     await execute(`document.querySelector('[data-page="settings"]').click()`);
     await waitFor(`!!document.querySelector('#settings-form')`);
     await capture('04-settings.png');
-    await execute(`document.querySelector('#base-url').value=${JSON.stringify(base)};document.querySelector('#model-name').value='test-model';document.querySelector('#api-key').value='test-key';document.querySelector('#settings-form').requestSubmit();`);
+    await execute(`document.querySelector('#base-url').value=${JSON.stringify(base)};document.querySelector('#model-name').value='deepseek-test-model';document.querySelector('#api-key').value='test-key';document.querySelector('#settings-form').requestSubmit();`);
     await waitFor(`document.querySelector('#api-key').placeholder.includes('留空')`);
     snapshot=await execute(`window.companion.call('state')`);assert(snapshot.hasKey);assert(!JSON.stringify(snapshot).includes('test-key'));
     await execute(`document.querySelector('#new-conversation').click()`);
     await waitFor(`!!document.querySelector('#message-input')`);
     await execute(`document.querySelector('#message-input').value='我喜欢散步，先听我说。';document.querySelector('#send-message').click();`);
+    await waitFor(`!!document.querySelector('.message.user')&&document.querySelector('#send-message').textContent==='停止生成'`);
     await waitFor(`document.querySelector('.message.assistant .message-content')?.textContent==='我在听。'&&document.querySelector('#send-message').textContent==='停止生成'`);
-    assert.equal(requests.length,1);assert.equal(requests[0].stream,true);assert.equal(requests[0].stream_options.include_usage,true);
+    assert.equal(requests.length,1);assert.equal(requests[0].stream,true);assert.equal(requests[0].stream_options.include_usage,true);assert.deepEqual(requests[0].thinking,{type:'disabled'});
     await capture('05-streaming-reply.png');
     await waitFor(`document.querySelector('#send-message').textContent==='发送 ↑'&&!!document.querySelector('.message.assistant')`);
     assert.equal(requests.length,1);
@@ -71,7 +74,7 @@ async function run(win,app){
     await waitFor(`window.companion.call('state').then(s=>s.memories.some(m=>m.status==='pending'))`);
     assert.equal(requests.length,2);assert(requests[0].messages[0].content.includes('先倾听'));
     snapshot=await execute(`window.companion.call('state')`);assert.equal(snapshot.memories.filter(m=>m.status==='pending').length,1);
-    assert.equal(snapshot.usage.byKind.chat.total,120);assert.equal(snapshot.usage.byKind.memory.total,45);
+    assert.equal(snapshot.usage.byKind.chat.total,120);assert(snapshot.conversations.flatMap(c=>c.messages).some(m=>m.timing?.firstTextMs>=0));assert.equal(snapshot.usage.byKind.memory.total,45);
     assert.equal(snapshot.usage.days[snapshot.usageDay].chat.total,120);
     assert((await execute(`document.querySelector('.message-usage').textContent`)).includes('120'));
     assert((await execute(`document.querySelector('#today-usage').textContent`)).includes('165'));

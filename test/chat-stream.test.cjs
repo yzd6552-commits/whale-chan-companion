@@ -26,3 +26,7 @@ test('stream usage-only event is captured once after text',async()=>{
  const input=packet('回复')+'data: '+JSON.stringify({choices:[],usage})+'\n\ndata: [DONE]\n\n';
  assert.equal(await readChatStream(response(input),()=>{},u=>reported.push(u)),'回复');assert.deepEqual(reported,[usage]);
 });
+test('reasoning shows a status once without exposing internal text as reply',async()=>{
+ let count=0;const pieces=[];const input=packet('')+'data: {"choices":[{"delta":{"reasoning_content":"hidden"}}]}\n\ndata: {"choices":[{"delta":{"reasoning_content":"hidden again"}}]}\n\n'+packet('你好')+'data: [DONE]\n\n';
+ await readChatStream(response(input),s=>pieces.push(s),()=>{},()=>count++);assert.equal(count,1);assert.deepEqual(pieces,['你好']);
+});

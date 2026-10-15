@@ -5,7 +5,7 @@ const categories = new Set(sections.map(s => s.id));
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 function initialState() {
-  return { version: 1, answers: {}, memories: [], conversations: [], settings: { baseUrl: '', model: '', extractMemory: true }, updatedAt: now() };
+  return { version: 1, answers: {}, memories: [], conversations: [], settings: { baseUrl: '', model: '', extractMemory: true, fastReply: true }, updatedAt: now() };
 }
 function validateEndpoint(value) {
   let url;
