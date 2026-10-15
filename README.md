@@ -6,7 +6,7 @@
 
 ![鲸鱼娘 · DeepSeek 鲸鱼娘主题界面](docs/screenshot.png)
 
-[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.10) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
+[下载安装包](https://github.com/yzd6552-commits/whale-chan-companion/releases/tag/v0.1.11) · [产品设计](DESIGN.md) · [验证记录](VALIDATION.md)
 
 v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、侧栏、聊天头像、问卷提示和 Mac 图标使用鲸鱼娘素材。角色图片来源于 Small-tailqwq/dsh-deep-whale；完整原作/二创署名链及 CC BY-NC-SA 4.0 美术许可见 [素材说明](./src/assets/whale/NOTICE.md)。本软件不是 DeepSeek 官方产品。
 
@@ -16,9 +16,9 @@ v0.1.1 使用参考社区 Q 版 DeepSeek 鲸鱼娘的蓝白主题。欢迎页、
 
 | 设备 | 安装包 | 安装方式 |
 | --- | --- | --- |
-| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.10-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Mac，Intel 芯片 | `WhaleChan-0.1.10-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
-| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.10-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
+| Mac，M 系列芯片（Apple Silicon） | `WhaleChan-0.1.11-mac-arm64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Mac，Intel 芯片 | `WhaleChan-0.1.11-mac-x64.dmg` | 打开后将“鲸鱼娘”拖到 Applications |
+| Windows，Intel / AMD 64 位 | `WhaleChan-0.1.11-win-x64.exe` | 运行安装向导，支持选择目录和桌面快捷方式 |
 
 在 Mac 的“关于本机”查看芯片。Windows 版本为 x64，未提供 Windows ARM64 或 32 位版本。各版数据分别保存在所在设备，不会自动互通。源码仓库不包含编译好的应用；安装包作为 Release 附件提供。
 
@@ -106,3 +106,11 @@ v0.1.10 起整理使用流式接收，最长等待 5 分钟，界面显示处理
 默认每次最多自动调整两项表达习惯，每项只移动一级，且限制在你允许的范围内。较大变化、性格特点、称呼、关系表达和共同习惯先审核；你可以编辑或否定建议。它始终保持温柔、好奇、坦率和独立判断，知道自己是 AI，不编造共同经历。
 
 你可以直接选择或锁定表达习惯、锁定已确认特点、查看变化依据和恢复历史版本（最多 20 版）；回退保留当前锁定。删除或修改依据会撤销相关衍生特点，明确手动锁定的表达选择则保留。反馈保存在本机；生成时最多发送 60 条选定反馈，可在发送前预览。实际相处效果取决于配置模型是否遵循这些设置，长期磨合仍需你的反馈。
+
+### 网页搜索与思考显示
+
+聊天右上角可打开“联网搜索”（默认关闭，关闭后不会搜索）。开启期间每次发送先搜索一次：可单独填写关键词，否则使用本条消息（最多 500 字）。只把搜索词发送到 Bing，不向搜索服务发送问卷、记忆库或 API 密钥。最多 5 条网页摘要随后提供给模型，来源保存在本轮聊天里，可展开和点击打开。发送前预览会显示搜索词；实时摘要在发送后取得并附加。搜索失败/无结果明确标记，不自动循环重试。
+
+当前使用 Bing 公开 RSS，不需要额外密钥，但该接口并非有服务保障的正式搜索 API，可能受地区、网络及服务调整影响。只检索摘要，未抓取全文；不执行网页任务或本机操作。模型 token 仍由模型 API 报告，搜索摘要会增加模型输入长度。
+
+思考显示支持标准 `reasoning_content`，以及部分网关返回的 `reasoning`、`reasoning_details` 文本字段。标准字段说明见 [DeepSeek 官方文档](https://api-docs.deepseek.com/guides/thinking_mode/)。只展示模型接口实际提供的文字，多个表示去重；不解密隐藏内容、不生成冒充真实思考的替代文字。只有 token 用量时说明未提供正文。修复从新回复开始生效，旧消息遗漏的文字无法补回。

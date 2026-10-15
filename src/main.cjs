@@ -9,6 +9,7 @@ const {recordUsage,usageDay} = require('./usage.cjs');
 const {completionBody} = require('./request-options.cjs');
 const profile=require('./profile.cjs');
 const persona=require('./persona.cjs');
+const webSearch=require('./web-search.cjs');
 const {ProfileWorker}=require('./profile-worker.cjs');
 let win, store, state, busy = false, controller, activeRequest;
 const memoryWorker = new MemoryWorker({... (process.argv.includes('--smoke-test') ? {idleDelay:1500,batchDelay:500} : {}),getState:()=>state,chatBusy:()=>busy||!!profileWorker.active,onIdle:()=>profileWorker.schedule(),save:()=>persist(),extract:async (turns,signal)=>{
@@ -104,18 +105,21 @@ function setupHandlers() {
   register('conversation-new', () => {const c = {id:core.id(), title:'新的对话', remember:true, messages:[], createdAt:core.now()}; state.conversations.unshift(c); persist(); return c.id;});
   register('conversation-delete', cid => {guard();memoryWorker.pause(cid); state.conversations = state.conversations.filter(c => c.id !== cid); persist();memoryWorker.schedule(); return publicState();});
   register('conversation-remember', (cid,value) => {guard();const c=conv(cid);c.remember=!!value;if(!value){memoryWorker.pause(cid);c.memoryQueue=[];delete c.memoryError;}persist();memoryWorker.schedule(); return publicState();});
-  register('preview', (cid,text) => {const c = conv(cid); return {...core.payload(state,c,String(text)), extract:c.remember && state.settings.extractMemory, baseUrl:state.settings.baseUrl, model:state.settings.model};});
-  register('send', async (cid, text, expected) => {
+  register('preview', (cid,text,query) => {const c = conv(cid); return {...core.payload(state,c,String(text)),searchQuery:state.settings.webSearch?webSearch.queryText(query||text):null, extract:c.remember && state.settings.extractMemory, baseUrl:state.settings.baseUrl, model:state.settings.model};});
+  register('web-search-toggle',enabled=>{guard();state.settings.webSearch=!!enabled;persist();return publicState();});
+  register('open-source',async(cid,mid,index)=>{const search=conv(cid).messages.find(m=>m.id===mid)?.search;const source=Number.isInteger(index)&&search?.results?.[index];const url=source&&webSearch.publicUrl(source.url);if(!url)throw Error('找不到有效的来源链接。');await shell.openExternal(url);return true;});
+  register('send', async (cid, text, expected, searchQuery) => {
     guard();
     text = String(text).trim();
     if (!text || text.length > 20000) throw new Error('请输入 1 到 20000 字的消息。');
     if (!hasKey() || !state.settings.baseUrl || !state.settings.model) throw new Error('请先在“连接与设置”配置 API，再开始聊天。');
     const c = conv(cid), built = core.payload(state,c,text);
+    const query=state.settings.webSearch?webSearch.queryText(searchQuery||text):null;
     if (expected && expected !== JSON.stringify(built.messages)) throw new Error('上下文已更新，请重新查看并确认发送内容。');
     memoryWorker.pause();profileWorker.pause();
     busy = true; controller = new AbortController(); const signal = controller.signal;
     activeRequest = cid;
-    const timeout = setTimeout(() => controller?.abort(),120000);
+    const timeout = setTimeout(() => controller?.abort(),state.settings.deepThinking?300000:120000);
     let result = {warning:''};
     c.messages.push({id:core.id(), role:'user', content:text, createdAt:core.now()});
     if(built.profileQuestion)profile.offered(state,built.profileQuestion);
@@ -125,11 +129,14 @@ function setupHandlers() {
     const ensureReply=()=>{if(!reply){reply={id:core.id(),role:'assistant',content:'',partial:true,createdAt:core.now()};c.messages.push(reply);}return reply;};
     const publishReply=()=>{win.webContents.send('chat-stream',{cid,id:reply.id,content:reply.content,reasoning:reply.reasoning||'',createdAt:reply.createdAt});if(Date.now()-lastSave>=1000){store.save(state);lastSave=Date.now();}};
     try {
+      let search=null;
+      if(query){win.webContents.send('generation-stage','正在搜索网页…');search=await webSearch.searchWeb(query,{signal,...(testMode?{fetchImpl:require('./smoke.cjs').searchFetch}:{})});if(signal.aborted)throw new Error('aborted');ensureReply().search=search;persist();if(search.status!=='ok')result.warning=search.status==='empty'?'没有找到可用搜索结果，本次不会假称已查到资料。':'网页搜索失败，本次按现有知识回答。';}
+      built.messages[0].content+=webSearch.context(search);
       const content = await completion(built.messages,signal,false,delta=>{
         ensureReply().content+=delta;publishReply();
       },(usage,timing)=>{if(reply){reply.usage=usage;reply.usageStatus=usage?'reported':'unreported';reply.timing=timing;}},'chat',text=>{const m=ensureReply();m.reasoning=(m.reasoning||'')+text;publishReply();});
       delete reply.partial;
-      if(state.settings.deepThinking&&!reply.reasoning)reply.reasoningUnavailable=true;
+      if(state.settings.deepThinking&&!reply.reasoning){reply.reasoningUnavailable=true;reply.reasoningTokensOnly=reply.usage?.reasoning>0;}
       memoryWorker.enqueue(c,text,content);persist();
       return result;
     } catch(e) {
@@ -151,7 +158,7 @@ function setupHandlers() {
       if (!safeStorage.isEncryptionAvailable()) throw new Error('系统密钥加密不可用，无法保存 API 密钥。');
       fs.writeFileSync(keyPath(),safeStorage.encryptString(key),{mode:0o600});
     } else if (changed && hasKey()) fs.unlinkSync(keyPath());
-    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory,fastReply:data.fastReply!==false,deepThinking:data.deepThinking===true,autoProfile:data.autoProfile!==false};
+    state.settings = {baseUrl,model,extractMemory:!!data.extractMemory,fastReply:data.fastReply!==false,deepThinking:data.deepThinking===true,autoProfile:data.autoProfile!==false,webSearch:data.webSearch===undefined?state.settings.webSearch===true:data.webSearch===true};
     if (!data.extractMemory) for(const c of state.conversations){c.memoryQueue=[];delete c.memoryError;}
     persist();memoryWorker.schedule(); return publicState();
   });

@@ -1,6 +1,13 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {readChatStream}=require('../src/chat-stream.cjs');
+test('gateway reasoning aliases work in JSON and SSE without duplicated representations',async()=>{
+ for(const field of [{reasoning:'网关思考',reasoning_details:[{type:'reasoning.text',text:'网关思考'}]},{reasoning_details:[{type:'reasoning.text',text:'结构化思考'},{type:'reasoning.encrypted',data:'private'}]},{reasoning_content:'标准思考',reasoning:'标准思考'}]){
+  const pieces=[];const expected=field.reasoning_content||field.reasoning||'结构化思考';
+  const json=Response.json({choices:[{message:{...field,content:'结论'}}]});assert.equal(await readChatStream(json,()=>{},()=>{},s=>pieces.push(s)),'结论');assert.equal(pieces.join(''),expected);
+  const stream=response('data: '+JSON.stringify({choices:[{delta:field}]})+'\n\n'+packet('结论')+'data: [DONE]\n\n');const streamed=[];assert.equal(await readChatStream(stream,()=>{},()=>{},s=>streamed.push(s)),'结论');assert.equal(streamed.join(''),expected);assert(!streamed.join('').includes('private'));
+ }
+});
 const packet=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\r\n\r\n';
 function response(text){const bytes=new TextEncoder().encode(text);return new Response(new ReadableStream({start(c){for(const byte of bytes)c.enqueue(Uint8Array.of(byte));c.close();}}),{headers:{'content-type':'text/event-stream'}});}
 test('streams UTF-8 split across bytes, SSE comments and CRLF without leaking reasoning',async()=>{

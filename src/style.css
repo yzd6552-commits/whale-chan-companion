@@ -167,6 +167,16 @@ dialog .memory-edit{min-height:150px;resize:vertical;line-height:1.8;margin-bott
 .usage-table th:first-child, .usage-table td:first-child { text-align: left; }
 
 .chat-options { display:flex; flex-wrap:wrap; gap:12px; justify-content:flex-end; }
+.search-query{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.search-query input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px}
+.search-disclosure{font-size:10px;color:var(--muted);margin:7px 0 10px}
+.search-sources{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;font-size:12px}
+.search-sources summary{cursor:pointer;color:var(--accent)}
+.search-source{padding:10px 0;border-bottom:1px solid var(--line)}
+.search-source p{font-size:11px;margin:5px 0;line-height:1.7;overflow-wrap:anywhere}
+.source-link{text-align:left;color:var(--accent);padding:0;line-height:1.7}
+.source-link:hover{text-decoration:underline}
+.search-status{margin-top:12px;color:var(--muted);font-size:11px}
 .reasoning-panel { margin:8px 0 18px; padding:12px 16px; border:1px solid #dce5fa; border-radius:14px; background:#f6f8ff; color:#687da7; font-size:13px; }
 .reasoning-panel summary { cursor:pointer; font-weight:600; }
 .reasoning-content { white-space:pre-wrap; overflow-wrap:anywhere; max-height:260px; overflow:auto; line-height:1.8; margin:12px 0; }

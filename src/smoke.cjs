@@ -59,7 +59,7 @@ async function run(win,app){
         res.setHeader('Content-Type','text/event-stream');
         const chunk=text=>'data: '+JSON.stringify({choices:[{delta:{content:text},finish_reason:null}]})+'\n\n';
         res.flushHeaders();
-        if(payload.thinking?.type==='enabled')res.write('data: '+JSON.stringify({choices:[{delta:{reasoning_content:'测试服务返回的思考文字：先理解用户的感受，再给出回复。'}}]})+'\n\n');
+        if(payload.thinking?.type==='enabled')res.write('data: '+JSON.stringify({choices:[{delta:{reasoning:'测试服务返回的思考文字：先理解用户的感受，再给出回复。',reasoning_details:[{type:'reasoning.text',text:'测试服务返回的思考文字：先理解用户的感受，再给出回复。'}]}}]})+'\n\n');
         const firstTimer=setTimeout(()=>res.write(chunk('我在听。')),payload.thinking?.type==='enabled'?1000:300);
         res.on('close',()=>clearTimeout(firstTimer));
         if(slow)return; // cancellation after partial text
@@ -185,10 +185,26 @@ async function run(win,app){
     const feedbackId=snapshot.persona.feedback[0].id;
     await execute(`document.querySelector('[data-persona-feedback-delete="${feedbackId}"]').click()`);await waitFor(`window.companion.call('state').then(s=>s.persona.rules.length===0&&s.persona.pending.length===0)`);
     await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);snapshot=await execute(`window.companion.call('state')`);assert(snapshot.persona.locks.humor);assert.equal(snapshot.persona.styles.humor.value,2);assert.equal(snapshot.persona.enabled,false);
+    await execute(`document.querySelector('#new-conversation').click()`);await waitFor(`!!document.querySelector('#web-search-mode')`);
+    await execute(`document.querySelector('#message-input').value='保留草稿';document.querySelector('#web-search-mode').click()`);
+    await waitFor(`!!document.querySelector('#web-search-query')`);assert.equal(await execute(`document.querySelector('#message-input').value`),'保留草稿');
+    await execute(`document.querySelector('#web-search-query').value='ESP32 官方文档';document.querySelector('#web-search-query').dispatchEvent(new Event('input'));document.querySelector('#message-input').value='帮我查一下这个芯片';document.querySelector('#preview-message').click()`);
+    await waitFor(`!!document.querySelector('#confirm-send')`);assert((await execute(`document.querySelector('#modal-content').textContent`)).includes('ESP32 官方文档'));
+    await execute(`document.querySelector('#confirm-send').click()`);
+    await waitFor(`!!document.querySelector('.search-sources')&&document.querySelector('#send-message').textContent==='发送 ↑'`);
+    snapshot=await execute(`window.companion.call('state')`);const webReply=snapshot.conversations[0].messages.at(-1);assert.equal(webReply.search.status,'ok');assert.equal(webReply.search.query,'ESP32 官方文档');assert.equal(webReply.search.results.length,1);
+    assert(requests.at(-1).messages[0].content.includes('<web_search_data>'));assert(requests.at(-1).messages[0].content.includes('docs.espressif.com'));assert(!requests.at(-1).messages[0].content.includes('不能声称刚刚查过网页'));
+    await execute(`document.querySelector('.search-sources').open=true`);await capture('13-web-search.png');
+    const reloadedId=snapshot.conversations[0].id;await win.webContents.reload();await waitFor(`!!document.querySelector('#start-onboarding')`);await execute(`document.querySelector('[data-conv="${reloadedId}"]').click()`);await waitFor(`!!document.querySelector('.search-sources')`);
+    await execute(`document.querySelector('#web-search-query').value='测试搜索失败';document.querySelector('#web-search-query').dispatchEvent(new Event('input'));document.querySelector('#message-input').value='测试失败';document.querySelector('#send-message').click()`);
+    await waitFor(`!!document.querySelector('.search-status')&&document.querySelector('#send-message').textContent==='发送 ↑'`);assert(requests.at(-1).messages[0].content.includes('搜索未成功'));assert.equal((await execute(`window.companion.call('state')`)).conversations[0].messages.at(-1).search.status,'failed');
+    await execute(`document.querySelector('#web-search-mode').click()`);await waitFor(`!document.querySelector('#web-search-query')`);
+    console.log('WEB SMOKE PASS: query preview, draft retention, source injection and display, persistence, safe failure and disabled search.');
     console.log('PERSONA SMOKE PASS: feedback batching, bounded automatic learning, major review, prompt isolation, rejection, locks, protected restore, draft preservation, manual growth while paused, evidence revocation and reload.');
     console.log('PROFILE SMOKE PASS: generation, review, prompt isolation, edit, deletion, manual generation while paused, rejection, history, revocation and persistence.');
     console.log('SMOKE PASS: questionnaire, review, memory edit, encrypted-key config, API request, memory extraction, opt-out, failure, cancellation, reload.');
     server.closeAllConnections();server.close();app.exit(0);
   }catch(e){console.error('SMOKE FAIL',e);if(server){server.closeAllConnections();server.close();}app.exit(1);}
 }
-module.exports={run};
+async function searchFetch(url,options){const u=new URL(url);assert.equal(u.hostname,'www.bing.com');assert(!options.headers.Authorization);if(u.searchParams.get('q')==='测试搜索失败')return new Response('',{status:503});return new Response('<rss><channel><item><title>ESP32 官方文档</title><link>https://docs.espressif.com/projects/esp-idf/</link><description>ESP32 技术文档摘要</description></item></channel></rss>');}
+module.exports={run,searchFetch};

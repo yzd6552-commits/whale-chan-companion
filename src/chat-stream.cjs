@@ -1,8 +1,14 @@
+// Compatible gateways use different names; prefer one representation per packet.
+function reasoningText(message){
+ const text=value=>typeof value==='string'?value:Array.isArray(value)?value.filter(p=>p&&['text','reasoning'].includes(p.type)&&typeof p.text==='string').map(p=>p.text).join(''):'';
+ for(const key of ['reasoning_content','reasoning']){const result=text(message?.[key]);if(result)return result;}
+ return Array.isArray(message?.reasoning_details)?message.reasoning_details.filter(p=>p&&p.type==='reasoning.text'&&typeof p.text==='string').map(p=>p.text).join(''):'';
+}
 // Decode data-only SSE without assuming network chunks align with events or UTF-8.
 async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{}) {
   if (!response.headers.get('content-type')?.includes('text/event-stream')) {
     const result=await response.json();onUsage(result.usage);
-    const reasoning=result.choices?.[0]?.message?.reasoning_content;
+    const reasoning=reasoningText(result.choices?.[0]?.message);
     if(typeof reasoning==='string'&&reasoning)onReasoning(reasoning.slice(0,100000));
     const answer=result.choices?.[0]?.message?.content;
     if (typeof answer!=='string'||!answer.trim()) throw Error('模型没有返回文本回复。');
@@ -19,7 +25,7 @@ async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{
     if(packet.usage)onUsage(packet.usage);
     const choice=packet.choices?.[0];
     if(choice?.finish_reason!=null)finished=true;
-    const reasoning=choice?.delta?.reasoning_content;
+    const reasoning=reasoningText(choice?.delta);
     if(typeof reasoning==='string'&&reasoning&&reasoningLength<100000){const piece=reasoning.slice(0,100000-reasoningLength);reasoningLength+=piece.length;onReasoning(piece);}
     const text=choice?.delta?.content;
     if(typeof text==='string'&&text){
@@ -39,4 +45,4 @@ async function readChatStream(response, onText, onUsage=()=>{},onReasoning=()=>{
     return answer;
   } finally {await reader.cancel().catch(()=>{});reader.releaseLock();}
 }
-module.exports={readChatStream};
+module.exports={readChatStream,reasoningText};
